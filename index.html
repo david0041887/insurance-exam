@@ -45,6 +45,14 @@
   .section-star-info{font-size:10px;color:var(--text3);display:flex;gap:4px;align-items:center;flex-shrink:0}
   .year-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
   .year-chip{text-align:center;padding:4px 2px;font-size:11px}
+  /* TOPIC PICKER */
+  .topic-section-header{font-size:10px;font-weight:700;letter-spacing:1px;color:var(--text3);margin:12px 0 6px;padding-bottom:3px;border-bottom:1px solid var(--border)}
+  .topic-section-header:first-child{margin-top:0}
+  .topic-chips{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}
+  .topic-chip{display:flex;align-items:center;gap:5px;padding:5px 9px;font-size:11px}
+  .topic-chip.active{background:linear-gradient(135deg,var(--accent),var(--accent2));border-color:transparent;color:#fff}
+  .topic-count{background:rgba(139,147,196,.15);padding:0 6px;border-radius:8px;font-size:10px;color:var(--text3);font-weight:600;min-width:20px;text-align:center}
+  .topic-chip.active .topic-count{background:rgba(255,255,255,.25);color:#fff}
   .start-btn{width:100%;padding:11px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:10px;color:#fff;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;transition:all .2s;box-shadow:0 4px 16px rgba(79,110,247,.3);margin-top:2px}
   .start-btn:hover{transform:translateY(-1px)}
   .review-btn{width:100%;padding:11px;background:linear-gradient(135deg,#dc2626,#991b1b);border:none;border-radius:10px;color:#fff;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;transition:all .2s;box-shadow:0 4px 16px rgba(220,38,38,.3);margin-top:6px}
@@ -162,18 +170,23 @@
       <div class="mode-toggle">
         <button class="mode-btn active" id="btn-mode-random" onclick="setMode('random')">&#128256; 隨機</button>
         <button class="mode-btn" id="btn-mode-year" onclick="setMode('year')">&#128197; 歷年</button>
+        <button class="mode-btn" id="btn-mode-topic" onclick="setMode('topic')">&#127919; 精選</button>
       </div>
+    </div>
+    <div class="panel" id="topic-panel" style="display:none">
+      <div class="panel-title">&#127919; 精選主題（點選抽題）</div>
+      <div id="topic-list"></div>
     </div>
     <div class="panel">
       <div class="panel-title">篩選條件</div>
-      <div class="filter-group">
+      <div class="filter-group" id="type-group">
         <span class="filter-label">適用類別</span>
         <div class="filter-chips">
           <div class="chip prop-chip active" data-type="property" onclick="toggleType(this)">&#127970; 財產</div>
           <div class="chip life-chip active" data-type="life" onclick="toggleType(this)">&#129516; 人身</div>
         </div>
       </div>
-      <div class="filter-group">
+      <div class="filter-group" id="section-group">
         <span class="filter-label">科目</span>
         <div id="section-chips"></div>
       </div>
@@ -318,12 +331,89 @@ function clearAllData(){
   updateSidePanels();
 }
 
+// ─── Topic definitions (curated from frequency analysis) ─────────────
+var TOPICS={
+  '保險經紀人保險法規概要':[
+    {label:'保險契約效力',keywords:['保險契約','契約無效','契約撤銷','契約解除','契約終止']},
+    {label:'保險法基礎',keywords:['保險法第','依保險法']},
+    {label:'業務員管理',keywords:['業務員','招攬']},
+    {label:'保險經紀人/代理人',keywords:['保險經紀人','保險代理人']},
+    {label:'保險費與金額',keywords:['保險費','保險金額']},
+    {label:'要保人/受益人',keywords:['要保人','受益人']},
+    {label:'保險利益',keywords:['保險利益']},
+    {label:'告知義務',keywords:['告知義務']},
+    {label:'複保險',keywords:['複保險']},
+    {label:'再保險',keywords:['再保險']}
+  ],
+  '保險學概要':[
+    {label:'保險契約性質',keywords:['保險契約']},
+    {label:'危險與保險原理',keywords:['危險','大數法則','逆選擇']},
+    {label:'保險利益',keywords:['保險利益']},
+    {label:'保險費計算',keywords:['保險費','純保費','附加']},
+    {label:'保險金額與價額',keywords:['保險金額','保險價額','不足額','超額','足額']},
+    {label:'理賠與代位',keywords:['理賠','代位']},
+    {label:'人壽保險',keywords:['人壽保險','定期壽險','終身壽險','生死合險','養老']},
+    {label:'火災保險',keywords:['火災保險']},
+    {label:'責任保險',keywords:['責任保險']},
+    {label:'再保險',keywords:['再保險']}
+  ],
+  '財產風險管理概要':[
+    {label:'風險管理流程',keywords:['風險管理','風險辨識','風險評估','風險控制','風險理財']},
+    {label:'損失頻率與幅度',keywords:['損失頻率','損失幅度']},
+    {label:'責任保險',keywords:['責任保險']},
+    {label:'火災保險',keywords:['火災保險']},
+    {label:'風險自留/移轉',keywords:['風險自留','風險移轉']},
+    {label:'純損vs投機風險',keywords:['純損','投機風險']},
+    {label:'可保風險',keywords:['可保風險']},
+    {label:'大數法則/逆選擇',keywords:['大數法則','逆選擇']},
+    {label:'危險管理',keywords:['危險']},
+    {label:'再保險',keywords:['再保險']}
+  ],
+  '人身風險管理概要':[
+    {label:'風險管理流程',keywords:['風險管理','風險辨識','風險評估','風險控制']},
+    {label:'人壽保險商品',keywords:['人壽保險','定期壽險','終身壽險']},
+    {label:'年金保險',keywords:['年金保險']},
+    {label:'健康保險',keywords:['健康保險']},
+    {label:'傷害保險',keywords:['傷害保險']},
+    {label:'失能與殘廢',keywords:['失能','殘廢']},
+    {label:'風險自留/移轉',keywords:['風險自留','風險移轉']},
+    {label:'逆選擇與道德危險',keywords:['逆選擇','道德危險']},
+    {label:'團體保險',keywords:['團體保險']},
+    {label:'投資型保險',keywords:['投資型']}
+  ],
+  '財產保險行銷概要':[
+    {label:'業務員招攬',keywords:['業務員','招攬']},
+    {label:'保險經紀人/代理人',keywords:['保險經紀人','保險代理人']},
+    {label:'理賠實務',keywords:['理賠']},
+    {label:'核保',keywords:['核保']},
+    {label:'佣金與報酬',keywords:['佣金','手續費']},
+    {label:'汽車保險',keywords:['汽車保險','強制汽車','強制險']},
+    {label:'火災保險',keywords:['火災保險']},
+    {label:'責任保險',keywords:['責任保險']},
+    {label:'保險費',keywords:['保險費']},
+    {label:'契約撤銷/終止',keywords:['撤銷','解除','終止']}
+  ],
+  '人身保險行銷概要':[
+    {label:'業務員招攬',keywords:['業務員','招攬']},
+    {label:'人壽保險銷售',keywords:['人壽保險','定期壽險','終身壽險']},
+    {label:'保險經紀人/代理人',keywords:['保險經紀人','保險代理人']},
+    {label:'理賠實務',keywords:['理賠']},
+    {label:'健康保險',keywords:['健康保險']},
+    {label:'年金保險',keywords:['年金保險']},
+    {label:'投資型保險',keywords:['投資型']},
+    {label:'核保',keywords:['核保']},
+    {label:'佣金',keywords:['佣金','手續費']},
+    {label:'保費與紅利',keywords:['保險費','紅利']}
+  ]
+};
+
 // ─── State ──────────────────────────────────────────────────────────
 var mode='random';
 var isReviewMode=false;
 var selectedTypes={property:true,life:true};
 var selectedSections={};
 var selectedYears={};
+var selectedTopic=null;
 var questionCount=20;
 var session=[];
 var cur=0;
@@ -387,6 +477,41 @@ function getSectionStarSummary(section){
     d.onclick=(function(el){return function(){toggleYear(el);};})(d);
     yc.appendChild(d);
   });
+})();
+
+(function buildTopics(){
+  var tl=document.getElementById('topic-list');
+  for(var sec in TOPICS){
+    (function(sectionName){
+      var header=document.createElement('div');
+      header.className='topic-section-header';
+      header.textContent=sectionName;
+      tl.appendChild(header);
+      var wrap=document.createElement('div');
+      wrap.className='topic-chips';
+      TOPICS[sectionName].forEach(function(t){
+        t._section=sectionName;
+        var cnt=0;
+        for(var i=0;i<ALL_QUESTIONS.length;i++){
+          var q=ALL_QUESTIONS[i];
+          if(q.section!==sectionName) continue;
+          var text=q.question;
+          for(var kk in q.options) text+=' '+q.options[kk];
+          for(var k=0;k<t.keywords.length;k++){
+            if(text.indexOf(t.keywords[k])>=0){cnt++;break;}
+          }
+        }
+        t._count=cnt;
+        var chip=document.createElement('div');
+        chip.className='chip topic-chip';
+        chip.innerHTML=t.label+'<span class="topic-count">'+cnt+'</span>';
+        chip.onclick=(function(topic){return function(){setTopic(topic);};})(t);
+        t._el=chip;
+        wrap.appendChild(chip);
+      });
+      tl.appendChild(wrap);
+    })(sec);
+  }
 })();
 
 buildSectionChips();
@@ -458,7 +583,20 @@ function setMode(m){
   mode=m;
   document.getElementById('btn-mode-random').className='mode-btn'+(m==='random'?' active':'');
   document.getElementById('btn-mode-year').className='mode-btn'+(m==='year'?' active':'');
+  document.getElementById('btn-mode-topic').className='mode-btn'+(m==='topic'?' active':'');
   document.getElementById('year-group').style.display=m==='year'?'block':'none';
+  document.getElementById('topic-panel').style.display=m==='topic'?'block':'none';
+  document.getElementById('type-group').style.display=m==='topic'?'none':'block';
+  document.getElementById('section-group').style.display=m==='topic'?'none':'block';
+  updateCountDisplay();
+}
+function setTopic(topic){
+  selectedTopic=topic;
+  for(var sec in TOPICS){
+    TOPICS[sec].forEach(function(t){
+      t._el.className='chip topic-chip'+(t===topic?' active':'');
+    });
+  }
   updateCountDisplay();
 }
 function toggleType(el){
@@ -499,6 +637,21 @@ function setCount(el){
 }
 function getFiltered(){
   var out=[];
+  if(mode==='topic'){
+    if(!selectedTopic) return out;
+    for(var i=0;i<ALL_QUESTIONS.length;i++){
+      var q=ALL_QUESTIONS[i];
+      if(q.section!==selectedTopic._section) continue;
+      var text=q.question;
+      for(var kk in q.options) text+=' '+q.options[kk];
+      var match=false;
+      for(var k=0;k<selectedTopic.keywords.length;k++){
+        if(text.indexOf(selectedTopic.keywords[k])>=0){match=true;break;}
+      }
+      if(match) out.push({q:q,idx:i});
+    }
+    return out;
+  }
   for(var i=0;i<ALL_QUESTIONS.length;i++){
     var q=ALL_QUESTIONS[i];
     if(!selectedTypes[q.type]) continue;
@@ -511,7 +664,10 @@ function getFiltered(){
 function updateCountDisplay(){
   var n=getFiltered().length;
   var show=questionCount===0?n:Math.min(n,questionCount);
-  document.getElementById('count-display').innerHTML='符合條件：<strong>'+n.toLocaleString()+'</strong> 題　本次出 <strong>'+show+'</strong> 題';
+  var prefix='符合條件';
+  if(mode==='topic'&&!selectedTopic) prefix='請先選一個主題';
+  else if(mode==='topic') prefix='主題「'+selectedTopic.label+'」';
+  document.getElementById('count-display').innerHTML=prefix+'：<strong>'+n.toLocaleString()+'</strong> 題　本次出 <strong>'+show+'</strong> 題';
 }
 
 // ─── Session ─────────────────────────────────────────────────────────
