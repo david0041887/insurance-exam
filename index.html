@@ -45,6 +45,23 @@
   .section-star-info{font-size:10px;color:var(--text3);display:flex;gap:4px;align-items:center;flex-shrink:0}
   .year-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
   .year-chip{text-align:center;padding:4px 2px;font-size:11px}
+  /* EXAM MODE */
+  .exam-info{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:11px;color:var(--text2);margin:10px 0;line-height:1.6}
+  .exam-info strong{color:var(--accent)}
+  .exam-timer-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;background:linear-gradient(135deg,var(--surface),var(--surface2));border:1px solid var(--border);border-radius:var(--radius);padding:12px 18px;margin-bottom:12px}
+  .exam-timer-label{font-size:11px;color:var(--text2);letter-spacing:1px;font-weight:600}
+  .exam-timer-value{font-size:28px;font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums;letter-spacing:1px}
+  .exam-timer-value.critical{color:#ef4444;animation:pulse 1s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+  .exam-submit-btn{background:linear-gradient(135deg,#ef4444,#dc2626);border:none;color:#fff;padding:8px 18px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;box-shadow:0 4px 12px rgba(239,68,68,.35)}
+  .exam-submit-btn:hover{transform:translateY(-1px)}
+  .option.exam-selected{background:rgba(79,110,247,.15);border-color:var(--accent);color:#fff}
+  .option.exam-selected .option-key{background:var(--accent);color:#fff}
+  .exam-grade{font-size:18px;font-weight:700;letter-spacing:2px;margin-bottom:8px}
+  .exam-grade.pass{color:var(--correct)}
+  .exam-grade.fail{color:var(--wrong)}
+  .exam-time-used{color:var(--text3);font-size:13px;margin-top:16px;margin-bottom:20px}
+  .progress-fill.exam{background:linear-gradient(90deg,#ef4444,#f59e0b)}
   /* TOPIC PICKER */
   .topic-section-header{font-size:10px;font-weight:700;letter-spacing:1px;color:var(--text3);margin:12px 0 6px;padding-bottom:3px;border-bottom:1px solid var(--border)}
   .topic-section-header:first-child{margin-top:0}
@@ -171,13 +188,33 @@
         <button class="mode-btn active" id="btn-mode-random" onclick="setMode('random')">&#128256; 隨機</button>
         <button class="mode-btn" id="btn-mode-year" onclick="setMode('year')">&#128197; 歷年</button>
         <button class="mode-btn" id="btn-mode-topic" onclick="setMode('topic')">&#127919; 精選</button>
+        <button class="mode-btn" id="btn-mode-exam" onclick="setMode('exam')">&#128221; 模擬</button>
       </div>
     </div>
     <div class="panel" id="topic-panel" style="display:none">
       <div class="panel-title">&#127919; 精選主題（點選抽題）</div>
       <div id="topic-list"></div>
     </div>
-    <div class="panel">
+    <div class="panel" id="exam-panel" style="display:none">
+      <div class="panel-title">&#128221; 模擬測驗設定</div>
+      <div class="filter-group">
+        <span class="filter-label">考試類型</span>
+        <div class="filter-chips">
+          <div class="chip prop-chip active" id="exam-type-property" onclick="setExamType('property')">&#127970; 財產保險</div>
+          <div class="chip life-chip" id="exam-type-life" onclick="setExamType('life')">&#129516; 人身保險</div>
+        </div>
+      </div>
+      <div class="filter-group">
+        <span class="filter-label">考試科目</span>
+        <div id="exam-subjects"></div>
+      </div>
+      <div class="exam-info">
+        &#128338; <strong>90 分鐘</strong> ｜ 50 題 ｜ <strong>60 分及格</strong><br>
+        &#9888;&#65039; 考試中不顯示對錯，可隨時更改選項。時間到自動交卷。
+      </div>
+      <button class="start-btn" onclick="startExamBtn()">&#127891; 開始模擬測驗</button>
+    </div>
+    <div class="panel" id="filter-panel">
       <div class="panel-title">篩選條件</div>
       <div class="filter-group" id="type-group">
         <span class="filter-label">適用類別</span>
@@ -230,6 +267,13 @@
       🔥 錯題複習：連續答對 3 次才移出</p>
     </div>
     <div id="q-area" style="display:none;flex-direction:column;gap:16px">
+      <div class="exam-timer-bar" id="exam-timer-bar" style="display:none">
+        <div>
+          <div class="exam-timer-label">模擬考試 ｜ 剩餘時間</div>
+          <div class="exam-timer-value" id="exam-timer-value">90:00</div>
+        </div>
+        <button class="exam-submit-btn" onclick="submitExam(false)">&#128221; 交卷</button>
+      </div>
       <div class="progress-bar-wrap">
         <div class="progress-track"><div class="progress-fill normal" id="prog-fill" style="width:0%"></div></div>
         <div class="progress-text"><strong id="prog-cur">0</strong> / <span id="prog-total">0</span></div>
@@ -274,6 +318,24 @@
       <div class="wrong-list-wrap" id="wrong-list-wrap">
         <div class="wrong-list-title">&#10060; 本次答錯題目</div>
         <div id="wrong-list-content"></div>
+      </div>
+    </div>
+    <div id="exam-finished" style="display:none">
+      <div class="finished-wrap">
+        <div class="exam-grade" id="exam-grade">&#9989; 及格</div>
+        <div class="finished-score" id="exam-score">0</div>
+        <div class="finished-label">滿分 100 ｜ 60 分及格</div>
+        <div class="stat-grid">
+          <div class="stat-box"><div class="stat-box-val" id="exam-total-box" style="color:var(--accent)">50</div><div class="stat-box-label">總題數</div></div>
+          <div class="stat-box"><div class="stat-box-val" id="exam-correct-box" style="color:var(--correct)">0</div><div class="stat-box-label">答對</div></div>
+          <div class="stat-box"><div class="stat-box-val" id="exam-wrong-box" style="color:var(--wrong)">0</div><div class="stat-box-label">答錯/未答</div></div>
+        </div>
+        <div class="exam-time-used" id="exam-time-used">耗時 00:00</div>
+        <button class="restart-btn" onclick="backToWelcome()">&#8617;&#65039; 返回設定</button>
+      </div>
+      <div class="wrong-list-wrap" id="exam-wrong-wrap">
+        <div class="wrong-list-title">&#128221; 本次錯題解析</div>
+        <div id="exam-wrong-content"></div>
       </div>
     </div>
   </main>
@@ -407,9 +469,30 @@ var TOPICS={
   ]
 };
 
+// ─── Exam presets (4 科 × 2 類型) ─────────────────────────────────
+var EXAM_SUBJECTS={
+  property:[
+    {label:'保險學概要',section:'保險學概要'},
+    {label:'保險經紀人保險法規概要',section:'保險經紀人保險法規概要'},
+    {label:'財產保險行銷概要',section:'財產保險行銷概要'},
+    {label:'財產風險管理概要',section:'財產風險管理概要'}
+  ],
+  life:[
+    {label:'保險學概要',section:'保險學概要'},
+    {label:'保險經紀人保險法規概要',section:'保險經紀人保險法規概要'},
+    {label:'人身保險行銷概要',section:'人身保險行銷概要'},
+    {label:'人身風險管理概要',section:'人身風險管理概要'}
+  ]
+};
+var EXAM_QUESTIONS=50;
+var EXAM_TIME_MS=90*60*1000; // 90 min
+
 // ─── State ──────────────────────────────────────────────────────────
 var mode='random';
 var isReviewMode=false;
+var isExamMode=false;
+var examConfig={type:'property',subjectIdx:0};
+var examStart=0,examEndTime=0,examTimerInterval=null;
 var selectedTypes={property:true,life:true};
 var selectedSections={};
 var selectedYears={};
@@ -584,11 +667,156 @@ function setMode(m){
   document.getElementById('btn-mode-random').className='mode-btn'+(m==='random'?' active':'');
   document.getElementById('btn-mode-year').className='mode-btn'+(m==='year'?' active':'');
   document.getElementById('btn-mode-topic').className='mode-btn'+(m==='topic'?' active':'');
+  document.getElementById('btn-mode-exam').className='mode-btn'+(m==='exam'?' active':'');
   document.getElementById('year-group').style.display=m==='year'?'block':'none';
   document.getElementById('topic-panel').style.display=m==='topic'?'block':'none';
+  document.getElementById('exam-panel').style.display=m==='exam'?'block':'none';
+  // Hide standard filter panel entirely in exam mode (exam has own start button)
+  document.getElementById('filter-panel').style.display=m==='exam'?'none':'block';
+  // In topic mode, hide type/section chips (topic implies both)
   document.getElementById('type-group').style.display=m==='topic'?'none':'block';
   document.getElementById('section-group').style.display=m==='topic'?'none':'block';
+  if(m==='exam') buildExamSubjects();
   updateCountDisplay();
+}
+
+// ─── Exam mode ─────────────────────────────────────────────────────
+function buildExamSubjects(){
+  var el=document.getElementById('exam-subjects');
+  el.innerHTML='';
+  EXAM_SUBJECTS[examConfig.type].forEach(function(s,i){
+    var cnt=0;
+    for(var k=0;k<ALL_QUESTIONS.length;k++){
+      if(ALL_QUESTIONS[k].section===s.section && ALL_QUESTIONS[k].type===examConfig.type) cnt++;
+    }
+    var d=document.createElement('div');
+    d.className='chip section-chip'+(i===examConfig.subjectIdx?' active':'');
+    d.innerHTML='<span class="section-chip-label">'+s.label+'</span><span class="section-star-info" style="color:var(--text3)">'+cnt+' 題</span>';
+    d.onclick=(function(ii){return function(){setExamSubject(ii);};})(i);
+    el.appendChild(d);
+  });
+}
+function setExamType(t){
+  examConfig.type=t;
+  examConfig.subjectIdx=0;
+  document.getElementById('exam-type-property').className='chip prop-chip'+(t==='property'?' active':'');
+  document.getElementById('exam-type-life').className='chip life-chip'+(t==='life'?' active':'');
+  buildExamSubjects();
+}
+function setExamSubject(i){
+  examConfig.subjectIdx=i;
+  buildExamSubjects();
+}
+function startExamBtn(){
+  var subj=EXAM_SUBJECTS[examConfig.type][examConfig.subjectIdx];
+  var pool=[];
+  for(var i=0;i<ALL_QUESTIONS.length;i++){
+    var q=ALL_QUESTIONS[i];
+    if(q.section===subj.section && q.type===examConfig.type) pool.push({q:q,idx:i});
+  }
+  if(pool.length<10){alert('此科目題目不足，無法模擬考試');return;}
+  var actual=Math.min(EXAM_QUESTIONS,pool.length);
+  if(!confirm('開始模擬測驗\n\n科目：'+subj.label+'\n題數：'+actual+' 題\n時間：90 分鐘\n\n考試中不顯示對錯，時間到自動交卷。\n確定開始？')) return;
+  isExamMode=true; isReviewMode=false;
+  session=shuffle(pool).slice(0,actual);
+  examStart=Date.now();
+  examEndTime=examStart+EXAM_TIME_MS;
+  initExamSession();
+  startExamTimer();
+}
+function initExamSession(){
+  answered=new Array(session.length).fill(null);
+  cur=0; sessionCorrect=0; sessionWrong=0; sessionWrongItems=[];
+  document.getElementById('welcome').style.display='none';
+  document.getElementById('finished').style.display='none';
+  document.getElementById('exam-finished').style.display='none';
+  var qa=document.getElementById('q-area');
+  qa.style.display='flex'; qa.style.flexDirection='column';
+  document.getElementById('exam-timer-bar').style.display='flex';
+  document.getElementById('prog-total').textContent=session.length;
+  document.getElementById('streak-bar').style.display='none';
+  document.getElementById('prog-fill').className='progress-fill exam';
+  renderQuestion();
+}
+function startExamTimer(){
+  if(examTimerInterval) clearInterval(examTimerInterval);
+  var tick=function(){
+    var remaining=examEndTime-Date.now();
+    if(remaining<=0){
+      clearInterval(examTimerInterval); examTimerInterval=null;
+      alert('時間到！自動交卷');
+      submitExam(true);
+      return;
+    }
+    var m=Math.floor(remaining/60000), s=Math.floor((remaining%60000)/1000);
+    var el=document.getElementById('exam-timer-value');
+    el.textContent=(m<10?'0':'')+m+':'+(s<10?'0':'')+s;
+    el.className='exam-timer-value'+(remaining<10*60*1000?' critical':'');
+  };
+  tick();
+  examTimerInterval=setInterval(tick,500);
+}
+function submitExam(auto){
+  if(!auto && !confirm('確定要交卷？未作答題目將視為錯誤。')) return;
+  if(examTimerInterval){clearInterval(examTimerInterval);examTimerInterval=null;}
+  var correct=0,wrong=0,unanswered=0;
+  var wrongItems=[];
+  for(var i=0;i<session.length;i++){
+    var it=session[i]; var ans=answered[i];
+    if(!ans){unanswered++; wrongItems.push({q:it.q,selected:null,idx:it.idx}); continue;}
+    if(ans.selected===it.q.answer) correct++;
+    else {wrong++; wrongItems.push({q:it.q,selected:ans.selected,idx:it.idx}); recordWrong(it.idx);}
+  }
+  showExamReport(correct,wrong,unanswered,wrongItems,Date.now()-examStart);
+}
+function showExamReport(correct,wrong,unanswered,wrongItems,timeUsedMs){
+  document.getElementById('q-area').style.display='none';
+  document.getElementById('exam-timer-bar').style.display='none';
+  document.getElementById('exam-finished').style.display='block';
+  var total=session.length;
+  var score=Math.round(correct/total*100);
+  document.getElementById('exam-score').textContent=score;
+  var pass=score>=60;
+  var gradeEl=document.getElementById('exam-grade');
+  gradeEl.textContent=pass?'✅ 及格':'❌ 未達及格';
+  gradeEl.className='exam-grade '+(pass?'pass':'fail');
+  document.getElementById('exam-total-box').textContent=total;
+  document.getElementById('exam-correct-box').textContent=correct;
+  document.getElementById('exam-wrong-box').textContent=wrong+unanswered;
+  var m=Math.floor(timeUsedMs/60000), s=Math.floor((timeUsedMs%60000)/1000);
+  var timeStr='耗時 '+(m<10?'0':'')+m+':'+(s<10?'0':'')+s;
+  if(unanswered>0) timeStr+=' ｜ '+unanswered+' 題未作答';
+  document.getElementById('exam-time-used').textContent=timeStr;
+  var wlc=document.getElementById('exam-wrong-content');
+  var wrap=document.getElementById('exam-wrong-wrap');
+  if(wrongItems.length>0){
+    var html='';
+    wrongItems.forEach(function(it){
+      html+='<div class="wrong-item">';
+      html+='<div style="color:var(--text);margin-bottom:7px;font-weight:600">'+it.q.question+'</div>';
+      ['A','B','C','D'].forEach(function(k){
+        if(!it.q.options[k]) return;
+        var style='color:var(--text2)';
+        var prefix='';
+        if(k===it.q.answer){style='color:var(--correct);font-weight:700';prefix='✅ ';}
+        else if(k===it.selected){style='color:var(--wrong);text-decoration:line-through';prefix='❌ ';}
+        html+='<div style="font-size:12px;margin:3px 0;padding-left:4px;'+style+'">'+prefix+k+'. '+it.q.options[k]+'</div>';
+      });
+      if(!it.selected) html+='<div style="color:#f87171;font-size:11px;margin-top:6px">⚠️ 本題未作答</div>';
+      html+='</div>';
+    });
+    wlc.innerHTML=html;
+    wrap.className='wrong-list-wrap show';
+  } else {
+    wrap.className='wrong-list-wrap';
+  }
+  isExamMode=false;
+  updateSidePanels();
+}
+function backToWelcome(){
+  isExamMode=false;
+  document.getElementById('exam-finished').style.display='none';
+  document.getElementById('welcome').style.display='block';
 }
 function setTopic(topic){
   selectedTopic=topic;
@@ -784,7 +1012,10 @@ function renderQuestion(){
     if(!q.options[k]) return;
     var div=document.createElement('div');
     var cls='option';
-    if(ans){
+    if(isExamMode){
+      // Exam: only highlight selected option, no correctness
+      if(ans && k===ans.selected) cls+=' exam-selected';
+    } else if(ans){
       cls+=' disabled';
       if(k===q.answer) cls+=' correct';
       else if(k===ans.selected) cls+=' wrong';
@@ -793,7 +1024,8 @@ function renderQuestion(){
     var kd=document.createElement('div'); kd.className='option-key'; kd.textContent=k;
     var td=document.createElement('div'); td.className='option-text'; td.textContent=q.options[k];
     div.appendChild(kd); div.appendChild(td);
-    if(!ans)(function(key){div.onclick=function(){selectAnswer(key);};})(k);
+    // In exam mode always clickable (can change); in normal mode only if not answered
+    if(isExamMode || !ans)(function(key){div.onclick=function(){selectAnswer(key);};})(k);
     optEl.appendChild(div);
   });
   document.getElementById('btn-prev').disabled=cur===0;
@@ -801,8 +1033,14 @@ function renderQuestion(){
 }
 
 function selectAnswer(key){
-  if(answered[cur]) return;
   var item=session[cur]; var q=item.q; var idx=item.idx;
+  if(isExamMode){
+    // Exam mode: record selection only, allow change, no grading
+    answered[cur]={selected:key};
+    renderQuestion();
+    return;
+  }
+  if(answered[cur]) return;
   var correct=key===q.answer;
   answered[cur]={selected:key,correct:correct};
   if(correct){
@@ -822,7 +1060,11 @@ function selectAnswer(key){
   renderQuestion();
 }
 
-function nextQ(){ if(cur<session.length-1){cur++;renderQuestion();}else showFinished(); }
+function nextQ(){
+  if(cur<session.length-1){cur++;renderQuestion();}
+  else if(isExamMode){alert('已到最後一題。確認全部答案後請按右上「交卷」。');}
+  else showFinished();
+}
 function prevQ(){ if(cur>0){cur--;renderQuestion();} }
 function skipQ(){ if(cur<session.length-1){cur++;renderQuestion();}else showFinished(); }
 
