@@ -31,6 +31,8 @@
   .mode-btn{flex:1;min-width:60px;padding:7px 4px;border:none;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;background:transparent;color:var(--text2);transition:all .2s;font-family:inherit;white-space:nowrap}
   .mode-btn.active{background:var(--accent);color:#fff;box-shadow:0 2px 8px rgba(79,110,247,.4)}
   .mode-btn.review-active{background:#dc2626;color:#fff;box-shadow:0 2px 8px rgba(220,38,38,.4)}
+  .shuffle-toggle{display:flex;align-items:center;gap:6px;margin-top:10px;font-size:11px;color:var(--text2);cursor:pointer;user-select:none}
+  .shuffle-toggle input{margin:0;cursor:pointer;accent-color:var(--accent)}
   /* FILTERS */
   .filter-group{margin-bottom:14px}
   .filter-label{font-size:10px;color:var(--text3);font-weight:700;letter-spacing:.8px;margin-bottom:7px;display:block}
@@ -172,6 +174,7 @@
         <button class="mode-btn" id="btn-mode-year" onclick="setMode('year')">&#128197; 歷年</button>
         <button class="mode-btn" id="btn-mode-topic" onclick="setMode('topic')">&#127919; 精選</button>
       </div>
+      <label class="shuffle-toggle"><input type="checkbox" id="shuffle-chk" checked onchange="toggleShuffle()"><span>&#127922; 選項隨機排列</span></label>
     </div>
     <div class="panel" id="topic-panel" style="display:none">
       <div class="panel-title">&#127919; 精選主題（點選抽題）</div>
@@ -722,6 +725,27 @@ function cleanOption(text){
   return text.trim();
 }
 
+// Option shuffle helpers
+var shuffleOptions=true;
+function toggleShuffle(){ shuffleOptions=document.getElementById('shuffle-chk').checked; }
+function shouldSkipShuffle(q){
+  for(var k in q.options){
+    var o=q.options[k]||'';
+    if(/以上皆[是非不對錯正誤全]|前[二三四五]項|選項\s*[A-D]/.test(o)) return true;
+  }
+  return false;
+}
+function makeDisplayOrder(q){
+  var letters=['A','B','C','D'].filter(function(k){return q.options[k];});
+  if(!shuffleOptions||shouldSkipShuffle(q)) return letters;
+  var a=letters.slice();
+  for(var i=a.length-1;i>0;i--){
+    var j=Math.floor(Math.random()*(i+1));
+    var t=a[i]; a[i]=a[j]; a[j]=t;
+  }
+  return a;
+}
+
 function formatQuestion(text){
   var qIdx=-1;
   for(var i=text.length-1;i>=0;i--){if(text[i]==='?'||text[i]==='？'){qIdx=i;break;}}
@@ -819,23 +843,26 @@ function renderQuestion(){
   renderStreakBar(idx);
   // Question text
   document.getElementById('q-text').innerHTML=formatQuestion(q.question);
-  // Options
+  // Options (shuffled display via session[cur].displayOrder)
+  if(!session[cur].displayOrder) session[cur].displayOrder=makeDisplayOrder(q);
+  var displayOrder=session[cur].displayOrder;
   var optEl=document.getElementById('q-options');
   optEl.innerHTML='';
-  ['A','B','C','D'].forEach(function(k){
-    if(!q.options[k]) return;
+  displayOrder.forEach(function(origLetter,visualIdx){
+    if(!q.options[origLetter]) return;
+    var visualLetter='ABCD'.charAt(visualIdx);
     var div=document.createElement('div');
     var cls='option';
     if(ans){
       cls+=' disabled';
-      if(k===q.answer) cls+=' correct';
-      else if(k===ans.selected) cls+=' wrong';
+      if(origLetter===q.answer) cls+=' correct';
+      else if(origLetter===ans.selected) cls+=' wrong';
     }
     div.className=cls;
-    var kd=document.createElement('div'); kd.className='option-key'; kd.textContent=k;
-    var td=document.createElement('div'); td.className='option-text'; td.textContent=cleanOption(q.options[k]);
+    var kd=document.createElement('div'); kd.className='option-key'; kd.textContent=visualLetter;
+    var td=document.createElement('div'); td.className='option-text'; td.textContent=cleanOption(q.options[origLetter]);
     div.appendChild(kd); div.appendChild(td);
-    if(!ans)(function(key){div.onclick=function(){selectAnswer(key);};})(k);
+    if(!ans)(function(key){div.onclick=function(){selectAnswer(key);};})(origLetter);
     optEl.appendChild(div);
   });
   document.getElementById('btn-prev').disabled=cur===0;
@@ -858,7 +885,7 @@ function selectAnswer(key){
     sessionWrong++;
     recordWrong(idx);    // adds to pool / resets streak
     resetStars(idx);     // stars back to 0
-    sessionWrongItems.push({q:q,selected:key,idx:idx});
+    sessionWrongItems.push({q:q,selected:key,idx:idx,displayOrder:session[cur].displayOrder});
   }
   updateSidePanels();
   renderQuestion();
@@ -890,8 +917,11 @@ function showFinished(){
       var cnt=getWrongCount(it.idx);
       html+='<div class="wrong-item">';
       html+='<div style="color:var(--text);margin-bottom:5px">'+it.q.question+'</div>';
-      html+='<div class="wrong-item-ans">你選了 <span style="color:var(--wrong)"><strong>'+it.selected+'</strong>：'+esc(cleanOption(it.q.options[it.selected]))+'</span></div>';
-      html+='<div class="wrong-item-ans">正確答案 <strong style="color:var(--correct)">'+it.q.answer+'</strong>：'+esc(cleanOption(it.q.options[it.q.answer]))+'</div>';
+      var dO=it.displayOrder||['A','B','C','D'];
+      var selV='ABCD'.charAt(dO.indexOf(it.selected));
+      var ansV='ABCD'.charAt(dO.indexOf(it.q.answer));
+      html+='<div class="wrong-item-ans">你選了 <span style="color:var(--wrong)"><strong>'+selV+'</strong>：'+esc(cleanOption(it.q.options[it.selected]))+'</span></div>';
+      html+='<div class="wrong-item-ans">正確答案 <strong style="color:var(--correct)">'+ansV+'</strong>：'+esc(cleanOption(it.q.options[it.q.answer]))+'</div>';
       if(cnt>1) html+='<div style="font-size:11px;color:#f87171;margin-top:4px">此題累計錯誤 '+cnt+' 次</div>';
       html+='</div>';
     });
