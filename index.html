@@ -719,9 +719,41 @@ function formatQuestion(text){
   var stem=text.slice(0,qIdx+1);
   var rest=text.slice(qIdx+1).trim();
   if(!rest) return esc(text);
-  var items=[]; var m; var re=/(\d+)([^\d]+)/g;
-  while((m=re.exec(rest))!==null) items.push({num:m[1],body:m[2].trim()});
-  if(items.length<2) return esc(text);
+
+  // Sequentially locate item markers 1, 2, 3, ...
+  // Reject a digit position if it's a 法條 reference (preceded by 第) or part of a multi-digit number
+  function findSequential(startN){
+    var positions=[], n=startN, from=0;
+    while(true){
+      var nStr=String(n), found=-1, i=from;
+      while(i<=rest.length-nStr.length){
+        var p=rest.indexOf(nStr,i); if(p<0) break;
+        var prev=p>0?rest[p-1]:''; var next=rest[p+nStr.length]||'';
+        if(prev==='第'||/\d/.test(prev)||/\d/.test(next)){ i=p+1; continue; }
+        found=p; break;
+      }
+      if(found<0) break;
+      positions.push({num:n,pos:found});
+      from=found+nStr.length; n++;
+    }
+    return positions;
+  }
+
+  var positions=findSequential(1);
+  // Fallback: missing "1" prefix — try starting at 2 and prepend implicit 1 at position 0
+  if(positions.length<2){
+    var alt=findSequential(2);
+    if(alt.length>=2) positions=[{num:1,pos:0,_implicit:true}].concat(alt);
+  }
+  if(positions.length<2) return esc(text);
+
+  var items=positions.map(function(it,i){
+    var end=i+1<positions.length?positions[i+1].pos:rest.length;
+    var skipLen=it._implicit?0:String(it.num).length;
+    var body=rest.slice(it.pos+skipLen,end).trim();
+    return {num:String(it.num),body:body};
+  });
+
   var h='<span style="display:block;margin-bottom:12px">'+esc(stem)+'</span>';
   items.forEach(function(it){
     h+='<span style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;line-height:1.75">'
