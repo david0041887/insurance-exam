@@ -712,6 +712,16 @@ function initSession(){
 // ─── Render ──────────────────────────────────────────────────────────
 function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
+// Strip next-question contamination from option text (e.g. "...。 B21 下一題...")
+function cleanOption(text){
+  if(!text) return text;
+  text=text.replace(/\s+[A-D]\s?\d{1,3}\s*[、,]?\s*[\s\S]*$/,'');
+  text=text.replace(/\s*#\d{1,3}[、.][\s\S]*$/,'');
+  text=text.replace(/\s+\d{1,3}\s+下列[\s\S]*$/,'');
+  text=text.replace(/\s+\d{2,3}\s+專門職業[\s\S]*$/,'');
+  return text.trim();
+}
+
 function formatQuestion(text){
   var qIdx=-1;
   for(var i=text.length-1;i>=0;i--){if(text[i]==='?'||text[i]==='？'){qIdx=i;break;}}
@@ -823,7 +833,7 @@ function renderQuestion(){
     }
     div.className=cls;
     var kd=document.createElement('div'); kd.className='option-key'; kd.textContent=k;
-    var td=document.createElement('div'); td.className='option-text'; td.textContent=q.options[k];
+    var td=document.createElement('div'); td.className='option-text'; td.textContent=cleanOption(q.options[k]);
     div.appendChild(kd); div.appendChild(td);
     if(!ans)(function(key){div.onclick=function(){selectAnswer(key);};})(k);
     optEl.appendChild(div);
@@ -880,8 +890,8 @@ function showFinished(){
       var cnt=getWrongCount(it.idx);
       html+='<div class="wrong-item">';
       html+='<div style="color:var(--text);margin-bottom:5px">'+it.q.question+'</div>';
-      html+='<div class="wrong-item-ans">你選了 <span style="color:var(--wrong)"><strong>'+it.selected+'</strong>：'+it.q.options[it.selected]+'</span></div>';
-      html+='<div class="wrong-item-ans">正確答案 <strong style="color:var(--correct)">'+it.q.answer+'</strong>：'+it.q.options[it.q.answer]+'</div>';
+      html+='<div class="wrong-item-ans">你選了 <span style="color:var(--wrong)"><strong>'+it.selected+'</strong>：'+esc(cleanOption(it.q.options[it.selected]))+'</span></div>';
+      html+='<div class="wrong-item-ans">正確答案 <strong style="color:var(--correct)">'+it.q.answer+'</strong>：'+esc(cleanOption(it.q.options[it.q.answer]))+'</div>';
       if(cnt>1) html+='<div style="font-size:11px;color:#f87171;margin-top:4px">此題累計錯誤 '+cnt+' 次</div>';
       html+='</div>';
     });
