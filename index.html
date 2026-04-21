@@ -747,53 +747,90 @@ function makeDisplayOrder(q){
 }
 
 function formatQuestion(text){
+  // Loose matcher for after-? context (trusted: items clearly follow the stem)
+  function findLoose(source,startN){
+    var p=[],n=startN,from=0;
+    while(true){
+      var ns=String(n),f=-1,i=from;
+      while(i<=source.length-ns.length){
+        var pp=source.indexOf(ns,i); if(pp<0) break;
+        var pv=pp>0?source[pp-1]:''; var nx=source[pp+ns.length]||'';
+        if(pv==='第'||/\d/.test(pv)||/\d/.test(nx)){ i=pp+1; continue; }
+        f=pp; break;
+      }
+      if(f<0) break;
+      p.push({num:n,pos:f}); from=f+ns.length; n++;
+    }
+    return p;
+  }
+  // Strict matcher for full-text context (require CJK char after digit, filters out "1 千萬", "第 2、3", etc.)
+  function findStrict(source,startN){
+    var p=[],n=startN,from=0;
+    while(true){
+      var ns=String(n),f=-1,i=from;
+      while(i<=source.length-ns.length){
+        var pp=source.indexOf(ns,i); if(pp<0) break;
+        var pv=pp>0?source[pp-1]:''; var nx=source[pp+ns.length]||'';
+        if(!/[\u4e00-\u9fff]/.test(nx)||pv==='第'||/\d/.test(pv)){ i=pp+1; continue; }
+        f=pp; break;
+      }
+      if(f<0) break;
+      p.push({num:n,pos:f}); from=f+ns.length; n++;
+    }
+    return p;
+  }
+  function tryParse(source,finder){
+    var p=finder(source,1);
+    if(p.length<2){ var a=finder(source,2); if(a.length>=2) p=[{num:1,pos:0,_implicit:true}].concat(a); }
+    return p.length>=2?p:null;
+  }
+  function buildItems(source,positions){
+    return positions.map(function(it,i){
+      var end=i+1<positions.length?positions[i+1].pos:source.length;
+      var skipLen=it._implicit?0:String(it.num).length;
+      return {num:String(it.num),body:source.slice(it.pos+skipLen,end)};
+    });
+  }
+  function renderItem(it){
+    return '<span style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;line-height:1.75">'
+      +'<span style="flex-shrink:0;min-width:22px;height:22px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--accent);margin-top:2px">'+esc(it.num)+'</span>'
+      +'<span>'+esc(it.body.trim())+'</span></span>';
+  }
+
   var qIdx=-1;
   for(var i=text.length-1;i>=0;i--){if(text[i]==='?'||text[i]==='？'){qIdx=i;break;}}
-  if(qIdx<0) return esc(text);
-  var stem=text.slice(0,qIdx+1);
-  var rest=text.slice(qIdx+1).trim();
-  if(!rest) return esc(text);
 
-  // Sequentially locate item markers 1, 2, 3, ...
-  // Reject a digit position if it's a 法條 reference (preceded by 第) or part of a multi-digit number
-  function findSequential(startN){
-    var positions=[], n=startN, from=0;
-    while(true){
-      var nStr=String(n), found=-1, i=from;
-      while(i<=rest.length-nStr.length){
-        var p=rest.indexOf(nStr,i); if(p<0) break;
-        var prev=p>0?rest[p-1]:''; var next=rest[p+nStr.length]||'';
-        if(prev==='第'||/\d/.test(prev)||/\d/.test(next)){ i=p+1; continue; }
-        found=p; break;
+  // Try 1: items after the last ? (standard format)
+  if(qIdx>=0){
+    var rest=text.slice(qIdx+1).trim();
+    if(rest){
+      var positions=tryParse(rest,findLoose);
+      if(positions){
+        var items=buildItems(rest,positions);
+        var h='<span style="display:block;margin-bottom:12px">'+esc(text.slice(0,qIdx+1))+'</span>';
+        items.forEach(function(it){ h+=renderItem(it); });
+        return h;
       }
-      if(found<0) break;
-      positions.push({num:n,pos:found});
-      from=found+nStr.length; n++;
     }
-    return positions;
   }
 
-  var positions=findSequential(1);
-  // Fallback: missing "1" prefix — try starting at 2 and prepend implicit 1 at position 0
-  if(positions.length<2){
-    var alt=findSequential(2);
-    if(alt.length>=2) positions=[{num:1,pos:0,_implicit:true}].concat(alt);
+  // Try 2: list embedded in full text (preList + items + optional postList)
+  var fullPositions=tryParse(text,findStrict);
+  if(!fullPositions) return esc(text);
+  var fullItems=buildItems(text,fullPositions);
+  var preList=text.slice(0,fullPositions[0].pos).trim();
+  // Extract trailing query from last item body (e.g. "...,上述何者正確?")
+  var last=fullItems[fullItems.length-1];
+  var postList='';
+  var trig=/[,，。;；]\s*(?:上述|以上|下列|何者|請問|試問|那些|哪些|屬於|是否|其中|何種|則)/.exec(last.body);
+  if(trig && /[?？]/.test(last.body.slice(trig.index))){
+    postList=last.body.slice(trig.index).replace(/^[,，。;；]\s*/,'').trim();
+    last.body=last.body.slice(0,trig.index);
   }
-  if(positions.length<2) return esc(text);
-
-  var items=positions.map(function(it,i){
-    var end=i+1<positions.length?positions[i+1].pos:rest.length;
-    var skipLen=it._implicit?0:String(it.num).length;
-    var body=rest.slice(it.pos+skipLen,end).trim();
-    return {num:String(it.num),body:body};
-  });
-
-  var h='<span style="display:block;margin-bottom:12px">'+esc(stem)+'</span>';
-  items.forEach(function(it){
-    h+='<span style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;line-height:1.75">'
-      +'<span style="flex-shrink:0;min-width:22px;height:22px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--accent);margin-top:2px">'+esc(it.num)+'</span>'
-      +'<span>'+esc(it.body)+'</span></span>';
-  });
+  var h='';
+  if(preList) h+='<span style="display:block;margin-bottom:12px">'+esc(preList)+'</span>';
+  fullItems.forEach(function(it){ h+=renderItem(it); });
+  if(postList) h+='<span style="display:block;margin-top:12px">'+esc(postList)+'</span>';
   return h;
 }
 
