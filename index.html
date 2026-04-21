@@ -722,6 +722,8 @@ function cleanOption(text){
   text=text.replace(/\s*#\d{1,3}[、.][\s\S]*$/,'');
   text=text.replace(/\s+\d{1,3}\s+下列[\s\S]*$/,'');
   text=text.replace(/\s+\d{2,3}\s+專門職業[\s\S]*$/,'');
+  // Trailing lone letter (next option's key) — require 。 before to avoid stripping legitimate names like "條款 A"
+  text=text.replace(/\s*。\s*[A-D]\s*$/,'。');
   return text.trim();
 }
 
