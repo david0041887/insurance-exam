@@ -529,10 +529,14 @@ function recordCorrectStar(idx){
   d[idx]=Math.min((d[idx]||0)+1,3);
   saveD(LS_STARS,d);
 }
+// Wrong answer: decrement star by 1 (not full reset). Returns true if a star was actually deducted.
 function resetStars(idx){
   var d=loadD(LS_STARS);
-  d[idx]=0;
+  var prev=d[idx]||0;
+  if(prev<=0) return false;
+  d[idx]=prev-1;
   saveD(LS_STARS,d);
+  return true;
 }
 
 function clearAllData(){
@@ -580,6 +584,14 @@ function recordAnswerStat(correct){
   if(!d[k]) d[k]={answered:0,correct:0};
   d[k].answered++;
   if(correct) d[k].correct++;
+  saveD(LS_STATS,d);
+}
+// Called when a previously-starred question is answered wrong: subtract from today's correct count
+function recordStarLoss(){
+  var d=loadD(LS_STATS);
+  var k=todayKey();
+  if(!d[k]) d[k]={answered:0,correct:0};
+  d[k].correct=Math.max(0,(d[k].correct||0)-1);
   saveD(LS_STATS,d);
 }
 function getStreakDays(){
@@ -1227,7 +1239,7 @@ function selectAnswer(key){
     sessionWrong++;
     if(!isViewOnly){
       recordWrong(idx);
-      resetStars(idx);
+      if(resetStars(idx)) recordStarLoss();
     }
     sessionWrongItems.push({q:q,selected:key,idx:idx,displayOrder:session[cur].displayOrder});
   }
@@ -1408,7 +1420,7 @@ function updateDailyPanel(){
   if(!el) return;
   var correct=getTodayCorrect();
   var streak=getStreakDays();
-  var goal=200;
+  var goal=300;
   var pct=Math.min(100,Math.round(correct/goal*100));
   var d=daysUntilExam();
   var countdown=d>0?('距 6/6 考試 <strong style="color:var(--wrong)">'+d+'</strong> 天'):(d===0?'<strong style="color:var(--wrong)">今天就是考試日！</strong>':'<span style="color:var(--text3)">考試已過</span>');
