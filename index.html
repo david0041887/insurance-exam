@@ -32,6 +32,17 @@
   .header-stats{display:flex;gap:16px;align-items:center}
   .stat-chip{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:5px 13px;font-size:12px;color:var(--text2);display:flex;align-items:center;gap:5px}
   .stat-chip strong{color:var(--text);font-weight:600}
+  /* COUNTDOWN BANNER */
+  .countdown-banner{background:linear-gradient(135deg,rgba(239,68,68,.18),rgba(245,158,11,.12));border-bottom:2px solid rgba(239,68,68,.4);padding:14px 24px;display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;position:sticky;top:0;z-index:99}
+  .countdown-banner.past{background:linear-gradient(135deg,rgba(139,147,196,.12),rgba(139,147,196,.05));border-bottom-color:var(--border)}
+  .countdown-label{font-size:13px;color:var(--text2);font-weight:500;letter-spacing:.5px}
+  .countdown-days{font-size:32px;font-weight:800;color:#ef4444;font-variant-numeric:tabular-nums;line-height:1;letter-spacing:-1px;text-shadow:0 2px 10px rgba(239,68,68,.35)}
+  .countdown-days.warn{color:#f59e0b;text-shadow:0 2px 10px rgba(245,158,11,.35)}
+  .countdown-days.safe{color:var(--correct);text-shadow:0 2px 10px rgba(16,185,129,.3)}
+  .countdown-unit{font-size:14px;color:var(--text2);font-weight:600}
+  .countdown-date{font-size:11px;color:var(--text3);letter-spacing:1px}
+  @keyframes urgentPulse{0%,100%{opacity:1}50%{opacity:.6}}
+  .countdown-days.urgent{animation:urgentPulse 1.2s infinite}
   .layout{display:flex;flex:1;max-width:1160px;margin:0 auto;width:100%;padding:20px 16px;gap:20px}
   .sidebar{width:260px;flex-shrink:0;display:flex;flex-direction:column;gap:14px}
   .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px}
@@ -184,6 +195,8 @@
     .layout{flex-direction:column;padding:10px;gap:14px}
     .sidebar{width:100%}
     .header-stats{display:none}
+    .countdown-banner{padding:10px 16px;gap:10px}
+    .countdown-days{font-size:26px}
     .question-card{padding:18px 16px}
     .question-text{font-size:14px}
     .year-grid{grid-template-columns:repeat(5,1fr)}
@@ -206,6 +219,12 @@
     <div class="stat-chip">&#10003; <strong id="hdr-correct" style="color:var(--correct)">0</strong> &nbsp;&#10007; <strong id="hdr-wrong" style="color:var(--wrong)">0</strong></div>
   </div>
 </header>
+<div class="countdown-banner" id="countdown-banner">
+  <span class="countdown-label">&#128226; 距離考試</span>
+  <span class="countdown-days" id="countdown-days">--</span>
+  <span class="countdown-unit">天</span>
+  <span class="countdown-date">&nbsp;｜&nbsp;2026/06/06</span>
+</div>
 <div class="layout">
   <aside class="sidebar">
     <div class="panel">
@@ -1230,6 +1249,31 @@ function daysUntilExam(){
   var target=new Date(EXAM_DATE); target.setHours(0,0,0,0);
   return Math.ceil((target-now)/(1000*60*60*24));
 }
+function updateCountdownBanner(){
+  var d=daysUntilExam();
+  var banner=document.getElementById('countdown-banner');
+  var daysEl=document.getElementById('countdown-days');
+  if(!daysEl) return;
+  if(d<0){
+    banner.className='countdown-banner past';
+    daysEl.textContent='考試已過';
+    daysEl.className='countdown-days';
+  } else if(d===0){
+    banner.className='countdown-banner';
+    daysEl.textContent='TODAY';
+    daysEl.className='countdown-days urgent';
+  } else {
+    banner.className='countdown-banner';
+    daysEl.textContent=d;
+    var cls='countdown-days';
+    if(d<=7) cls+=' urgent';
+    else if(d<=30) cls+='';
+    else if(d<=60) cls+=' warn';
+    else cls+=' safe';
+    daysEl.className=cls;
+  }
+}
+updateCountdownBanner();
 function getTodayCorrect(){
   var d=loadD(LS_STATS);
   return (d[todayKey()]||{}).correct||0;
