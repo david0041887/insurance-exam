@@ -1026,7 +1026,7 @@ function startSession(){
   isReviewMode=false;
   var pool=getFiltered();
   if(!pool.length){alert('沒有符合條件的題目');return;}
-  pool=mode==='year'?pool.sort(function(a,b){return (a.q.year||0)-(b.q.year||0);}):shuffle(pool);
+  pool=shuffle(pool);
   session=questionCount===0?pool:pool.slice(0,questionCount);
   initSession();
 }
