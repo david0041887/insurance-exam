@@ -1,0 +1,19 @@
+{
+  "name": "保險經紀代理考古題練習",
+  "short_name": "保險考古題",
+  "description": "民國 99-114 年保險經紀人/代理人考古題練習",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0f1117",
+  "theme_color": "#0f1117",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
