@@ -1,0 +1,13 @@
+name = "insurance-exam-grader"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+account_id = "67c55e07c270abdb2fb105f7611901b2"
+
+# ANTHROPIC_API_KEY is set via `wrangler secret put ANTHROPIC_API_KEY`
+# Never commit the key here.
+
+[observability]
+enabled = true
+
+[vars]
+DAILY_LIMIT_PER_IP = "50"
