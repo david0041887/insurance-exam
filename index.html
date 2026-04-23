@@ -51,7 +51,6 @@
   .mode-toggle{display:flex;background:var(--bg);border-radius:10px;padding:3px;gap:3px;flex-wrap:wrap}
   .mode-btn{flex:1;min-width:60px;padding:7px 4px;border:none;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;background:transparent;color:var(--text2);transition:all .2s;font-family:inherit;white-space:nowrap}
   .mode-btn.active{background:var(--accent);color:#fff;box-shadow:0 2px 8px rgba(79,110,247,.4)}
-  .mode-btn.review-active{background:#dc2626;color:#fff;box-shadow:0 2px 8px rgba(220,38,38,.4)}
   .shuffle-toggle{display:flex;align-items:center;gap:6px;margin-top:10px;font-size:11px;color:var(--text2);cursor:pointer;user-select:none}
   .shuffle-toggle input{margin:0;cursor:pointer;accent-color:var(--accent)}
   /* FILTERS */
@@ -294,12 +293,11 @@
       <div class="count-display" id="count-display">符合條件：<strong>0</strong> 題</div>
     </div>
     <!-- Daily progress -->
-    <div class="panel" id="daily-panel">
+    <div class="panel">
       <div class="panel-title">&#128197; 今日進度</div>
       <div id="daily-content" style="font-size:12px;color:var(--text2);line-height:1.8"></div>
     </div>
-    <!-- Section star stats -->
-    <div class="panel" id="section-stats-panel">
+    <div class="panel">
       <div class="panel-title">&#11088; 星星答對率</div>
       <div id="section-stats-content"></div>
     </div>
@@ -438,16 +436,10 @@ function recordWrong(idx){
 }
 function recordReviewCorrect(idx){
   var d=getWrongPool();
-  if(!d[idx]) return false; // not in pool
+  if(!d[idx]) return;
   d[idx].streak=(d[idx].streak||0)+1;
-  var graduated = d[idx].streak>=3;
-  if(graduated) delete d[idx];
+  if(d[idx].streak>=3) delete d[idx]; // graduated out
   saveD(LS_WRONG,d);
-  return graduated;
-}
-function resetReviewStreak(idx){
-  var d=getWrongPool();
-  if(d[idx]){ d[idx].streak=0; saveD(LS_WRONG,d); }
 }
 
 // ─── Stars ───────────────────────────────────────────────────────────
@@ -521,10 +513,6 @@ function getStreakDays(){
     day.setDate(day.getDate()-1);
   }
   return streak;
-}
-function getTodayAnswered(){
-  var d=loadD(LS_STATS);
-  return (d[todayKey()]||{}).answered||0;
 }
 
 // ─── Topic definitions (curated from frequency analysis) ─────────────
@@ -1215,7 +1203,9 @@ document.addEventListener('keydown',function(e){
     return;
   }
   if(inField) return;
-  // ? opens shortcuts (works anywhere)
+  // Block all shortcuts if any modal is open
+  if(document.querySelector('.modal-backdrop.show')) return;
+  // ? opens shortcuts
   if(e.key==='?'||(e.key==='/'&&e.shiftKey)){ e.preventDefault(); showShortcuts(); return; }
   // Only act when q-area is visible
   var qa=document.getElementById('q-area');
