@@ -86,6 +86,11 @@
   .tool-btn{width:100%;padding:8px;margin-top:6px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text2);font-size:12px;cursor:pointer;font-family:inherit;transition:all .15s}
   .tool-btn:first-child{margin-top:0}
   .tool-btn:hover{border-color:var(--accent);color:var(--text)}
+  /* UPDATE TOAST */
+  .update-toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--accent);border-radius:12px;padding:12px 18px;color:var(--text);box-shadow:0 8px 32px rgba(0,0,0,.5);z-index:2000;display:flex;align-items:center;gap:12px;font-size:13px;animation:slideUp .3s ease}
+  @keyframes slideUp{from{opacity:0;transform:translate(-50%,20px)}to{opacity:1;transform:translate(-50%,0)}}
+  .update-toast-btn{background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;color:#fff;padding:6px 14px;border-radius:8px;font-weight:700;cursor:pointer;font-family:inherit;font-size:12px}
+  .update-toast-x{background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:18px;padding:0 4px;font-family:inherit}
   /* MODAL */
   .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:1000;padding:20px}
   .modal-backdrop.show{display:flex}
@@ -99,6 +104,7 @@
   .week-bar-day{flex:1;background:var(--bg);border-radius:4px;position:relative;border:1px solid var(--border)}
   .week-bar-fill{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(180deg,var(--accent),var(--accent2));border-radius:3px;transition:height .3s}
   .week-bar-label{text-align:center;font-size:9px;color:var(--text3);margin-top:3px}
+  kbd{background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:2px 7px;font-family:'SFMono-Regular',Consolas,monospace;font-size:11px;color:var(--accent);box-shadow:0 1px 0 var(--border);margin:0 1px}
   /* TOPIC PICKER */
   .topic-section-header{font-size:10px;font-weight:700;letter-spacing:1px;color:var(--text3);margin:12px 0 6px;padding-bottom:3px;border-bottom:1px solid var(--border)}
   .topic-section-header:first-child{margin-top:0}
@@ -151,7 +157,9 @@
   .star.lit{filter:drop-shadow(0 0 4px rgba(251,191,36,.6))}
   /* OPTIONS */
   .options{display:flex;flex-direction:column;gap:9px}
-  .option{display:flex;align-items:flex-start;gap:13px;padding:13px 16px;border-radius:11px;border:1.5px solid var(--border);background:var(--bg);cursor:pointer;transition:all .15s;user-select:none}
+  .option{display:flex;align-items:flex-start;gap:13px;padding:13px 16px;border-radius:11px;border:1.5px solid var(--border);background:var(--bg);cursor:pointer;transition:all .15s}
+  .option .option-text{user-select:text;cursor:text}
+  .question-text{user-select:text}
   .option:hover:not(.disabled){border-color:var(--accent);background:rgba(79,110,247,.06)}
   .option.disabled{cursor:default}
   .option.correct{border-color:var(--correct);background:rgba(16,185,129,.08)}
@@ -195,10 +203,15 @@
     .layout{flex-direction:column;padding:10px;gap:14px}
     .sidebar{width:100%}
     .header-stats{display:none}
-    .countdown-chip{display:flex!important;padding:5px 10px;gap:5px}
+    .header{padding:10px 14px;gap:8px}
+    .logo-text{font-size:14px}
+    .logo-sub{display:none}
+    .logo-icon{width:30px;height:30px;font-size:15px}
+    .countdown-chip{display:flex!important;padding:5px 10px;gap:5px;flex-shrink:0}
     .countdown-chip .c-label{display:none}
     .countdown-chip .c-days{font-size:18px}
     .countdown-chip .c-date{display:none}
+    .countdown-chip .c-unit{font-size:10px}
     .question-card{padding:18px 16px}
     .question-text{font-size:14px}
     .year-grid{grid-template-columns:repeat(5,1fr)}
@@ -294,6 +307,8 @@
     <div class="panel">
       <div class="panel-title">&#128736;&#65039; 工具</div>
       <button onclick="showStatsModal()" class="tool-btn">&#128200; 學習統計</button>
+      <button onclick="showShortcuts()" class="tool-btn">&#9000;&#65039; 快捷鍵 (?)</button>
+      <button onclick="triggerInstall()" class="tool-btn" id="pwa-install-btn" style="display:none">&#128241; 安裝為 App</button>
       <button onclick="exportData()" class="tool-btn">&#128228; 匯出進度</button>
       <label class="tool-btn" style="cursor:pointer;display:block;text-align:center">
         &#128229; 匯入進度
@@ -377,6 +392,19 @@
       </div>
     </div>
   </main>
+</div>
+<div class="modal-backdrop" id="shortcuts-modal" onclick="if(event.target===this)hideShortcuts()">
+  <div class="modal">
+    <button class="modal-close" onclick="hideShortcuts()">&times;</button>
+    <h3>&#9000;&#65039; 鍵盤快捷鍵</h3>
+    <div class="stat-row"><span><kbd>1</kbd> / <kbd>2</kbd> / <kbd>3</kbd> / <kbd>4</kbd></span><span>選擇 A / B / C / D</span></div>
+    <div class="stat-row"><span><kbd>→</kbd> 或 <kbd>Enter</kbd></span><span>下一題</span></div>
+    <div class="stat-row"><span><kbd>←</kbd></span><span>上一題</span></div>
+    <div class="stat-row"><span><kbd>Space</kbd></span><span>略過</span></div>
+    <div class="stat-row"><span><kbd>?</kbd></span><span>開啟此快捷鍵表</span></div>
+    <div class="stat-row"><span><kbd>Esc</kbd></span><span>關閉彈窗</span></div>
+    <p style="margin-top:14px;font-size:11px;color:var(--text3)">※ 於搜尋框/輸入欄位中時，快捷鍵會暫停。</p>
+  </div>
 </div>
 <div class="modal-backdrop" id="stats-modal" onclick="if(event.target===this)hideStatsModal()">
   <div class="modal">
@@ -684,8 +712,16 @@ function buildTopicsUI(){
 }
 
 // ─── Data loading & boot ─────────────────────────────────────────────
-var DATA_CACHE_KEY='ins_data_v1';
+var DATA_VERSION='2';  // bump when questions.json content changes
+var DATA_CACHE_KEY='ins_data_v'+DATA_VERSION;
 function loadData(){
+  // Purge old cache versions
+  try{
+    for(var i=0;i<localStorage.length;i++){
+      var k=localStorage.key(i);
+      if(k&&k.indexOf('ins_data_v')===0&&k!==DATA_CACHE_KEY){ localStorage.removeItem(k); i--; }
+    }
+  }catch(e){}
   try{
     var cached=localStorage.getItem(DATA_CACHE_KEY);
     if(cached){
@@ -693,7 +729,7 @@ function loadData(){
       if(Array.isArray(parsed)&&parsed.length>3000) return Promise.resolve(parsed);
     }
   }catch(e){}
-  return fetch('questions.json').then(function(r){return r.json();}).then(function(d){
+  return fetch('questions.json',{cache:'no-cache'}).then(function(r){return r.json();}).then(function(d){
     try{localStorage.setItem(DATA_CACHE_KEY,JSON.stringify(d));}catch(e){}
     return d;
   });
@@ -893,6 +929,7 @@ function startReview(){
   initSession();
 }
 function initSession(){
+  isViewOnly=false;
   answered=new Array(session.length).fill(null);
   cur=0; sessionCorrect=0; sessionWrong=0; sessionWrongItems=[];
   document.getElementById('welcome').style.display='none';
@@ -1111,21 +1148,22 @@ function selectAnswer(key){
   var item=session[cur]; var q=item.q; var idx=item.idx;
   var correct=key===q.answer;
   answered[cur]={selected:key,correct:correct};
-  recordAnswerStat(correct);
+  if(!isViewOnly) recordAnswerStat(correct);
   if(correct){
     sessionCorrect++;
-    recordCorrectStar(idx);
-    if(isReviewMode){
-      var graduated=recordReviewCorrect(idx);
-      // if graduated remove from remaining session
+    if(!isViewOnly){
+      recordCorrectStar(idx);
+      if(isReviewMode) recordReviewCorrect(idx);
     }
   } else {
     sessionWrong++;
-    recordWrong(idx);    // adds to pool / resets streak
-    resetStars(idx);     // stars back to 0
+    if(!isViewOnly){
+      recordWrong(idx);
+      resetStars(idx);
+    }
     sessionWrongItems.push({q:q,selected:key,idx:idx,displayOrder:session[cur].displayOrder});
   }
-  updateSidePanels();
+  if(!isViewOnly) updateSidePanels();
   renderQuestion();
 }
 
@@ -1155,7 +1193,7 @@ function renderSearch(){
   var html=''; var esc2=function(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};
   var hl=function(t){return esc2(t).split(esc2(kw)).join('<mark>'+esc2(kw)+'</mark>');};
   hits.forEach(function(h){
-    html+='<div class="search-item" onclick="drillQuestion('+h.i+')">'
+    html+='<div class="search-item" onclick="viewQuestion('+h.i+')">'
       +'<div class="search-item-meta">民國 '+h.q.year+' ｜ '+(h.q.type==='life'?'人身':'財產')+'</div>'
       +'<div class="search-item-text">'+hl(h.q.question.slice(0,80))+(h.q.question.length>80?'…':'')+'</div>'
       +'</div>';
@@ -1165,10 +1203,20 @@ function renderSearch(){
 }
 
 // ─── Keyboard shortcuts ──────────────────────────────────────────────
+function showShortcuts(){ document.getElementById('shortcuts-modal').className='modal-backdrop show'; }
+function hideShortcuts(){ document.getElementById('shortcuts-modal').className='modal-backdrop'; }
 document.addEventListener('keydown',function(e){
-  // Ignore when typing in input/textarea
   var tag=(e.target.tagName||'').toLowerCase();
-  if(tag==='input'||tag==='textarea'||e.target.isContentEditable) return;
+  var inField=tag==='input'||tag==='textarea'||e.target.isContentEditable;
+  // Esc closes any open modal (works anywhere)
+  if(e.key==='Escape'){
+    hideShortcuts();
+    if(typeof hideStatsModal==='function') hideStatsModal();
+    return;
+  }
+  if(inField) return;
+  // ? opens shortcuts (works anywhere)
+  if(e.key==='?'||(e.key==='/'&&e.shiftKey)){ e.preventDefault(); showShortcuts(); return; }
   // Only act when q-area is visible
   var qa=document.getElementById('q-area');
   if(!qa||qa.style.display==='none') return;
@@ -1222,8 +1270,11 @@ function showFinished(){
   }
 }
 
-function drillQuestion(idx){
-  isReviewMode=true;
+var isViewOnly=false;
+function drillQuestion(idx,opts){
+  var asReview=!opts||opts.review!==false;
+  isReviewMode=asReview;
+  isViewOnly=opts&&opts.viewOnly;
   session=[{q:ALL_QUESTIONS[idx],idx:idx}];
   answered=[null];
   cur=0; sessionCorrect=0; sessionWrong=0; sessionWrongItems=[];
@@ -1232,10 +1283,11 @@ function drillQuestion(idx){
   var qa=document.getElementById('q-area');
   qa.style.display='flex'; qa.style.flexDirection='column';
   document.getElementById('prog-total').textContent=1;
-  document.getElementById('streak-bar').style.display='flex';
-  document.getElementById('prog-fill').className='progress-fill review';
+  document.getElementById('streak-bar').style.display=asReview?'flex':'none';
+  document.getElementById('prog-fill').className='progress-fill '+(asReview?'review':'normal');
   renderQuestion();
 }
+function viewQuestion(idx){ drillQuestion(idx,{review:false,viewOnly:true}); }
 
 function restartSession(){
   document.getElementById('finished').style.display='none';
@@ -1346,6 +1398,34 @@ function showStatsModal(){
     html+='<div class="stat-row"><span style="font-size:12px">'+s+'</span><strong>'+p+'%</strong></div>';
   }
   html+='</div>';
+  // Topic mastery
+  html+='<div style="margin-top:18px"><div style="font-size:11px;color:var(--text3);margin-bottom:6px">精選主題熟練度（依答對星星數）</div>';
+  var topicRows=[];
+  for(var sec in TOPICS){
+    TOPICS[sec].forEach(function(t){
+      if(!t._count||t._count<5) return;
+      var matched=0, mastered=0;
+      for(var i=0;i<ALL_QUESTIONS.length;i++){
+        var q=ALL_QUESTIONS[i];
+        if(q.section!==sec) continue;
+        var hay=q.question; for(var kk in q.options) hay+=' '+q.options[kk];
+        var hit=false;
+        for(var ki=0;ki<t.keywords.length;ki++){ if(hay.indexOf(t.keywords[ki])>=0){hit=true;break;} }
+        if(!hit) continue;
+        matched++;
+        if((stars[i]||0)>=3) mastered++;
+      }
+      var pct=matched>0?Math.round(mastered/matched*100):0;
+      topicRows.push({label:t.label,section:sec,pct:pct,total:matched});
+    });
+  }
+  // Sort ascending by mastery (weakest first — what user should study)
+  topicRows.sort(function(a,b){return a.pct-b.pct;});
+  topicRows.slice(0,12).forEach(function(r){
+    var color=r.pct<30?'#ef4444':(r.pct<60?'#f59e0b':'var(--correct)');
+    html+='<div class="stat-row"><span style="font-size:12px">'+r.label+' <span style="color:var(--text3);font-size:10px">('+r.total+')</span></span><strong style="color:'+color+'">'+r.pct+'%</strong></div>';
+  });
+  html+='<div style="margin-top:6px;font-size:10px;color:var(--text3)">按熟練度升冪排序，前 12 個為弱點主題</div></div>';
   document.getElementById('stats-modal-content').innerHTML=html;
   document.getElementById('stats-modal').className='modal-backdrop show';
 }
@@ -1395,10 +1475,61 @@ function toggleTheme(){
 }
 applyTheme();
 
-// ─── Service worker ──────────────────────────────────────────────────
+// ─── PWA install prompt ──────────────────────────────────────────────
+var deferredPrompt=null;
+window.addEventListener('beforeinstallprompt',function(e){
+  e.preventDefault();
+  deferredPrompt=e;
+  var btn=document.getElementById('pwa-install-btn');
+  if(btn) btn.style.display='block';
+});
+function triggerInstall(){
+  if(!deferredPrompt){ alert('此瀏覽器已安裝或不支援自動安裝。\n可手動：\n• Chrome/Edge：網址列右側 ⊕ 圖示\n• iOS Safari：分享 → 加到主畫面'); return; }
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(function(){
+    deferredPrompt=null;
+    var btn=document.getElementById('pwa-install-btn');
+    if(btn) btn.style.display='none';
+  });
+}
+window.addEventListener('appinstalled',function(){
+  var btn=document.getElementById('pwa-install-btn');
+  if(btn) btn.style.display='none';
+});
+
+// ─── Service worker with update prompt ───────────────────────────────
+function showUpdateToast(reg){
+  if(document.getElementById('sw-update-toast')) return;
+  var t=document.createElement('div');
+  t.id='sw-update-toast';
+  t.className='update-toast';
+  t.innerHTML='&#128226; 有新版本可用 <button id="sw-update-btn" class="update-toast-btn">立即更新</button> <button id="sw-update-dismiss" class="update-toast-x">×</button>';
+  document.body.appendChild(t);
+  document.getElementById('sw-update-btn').onclick=function(){
+    if(reg.waiting) reg.waiting.postMessage('skip-waiting');
+  };
+  document.getElementById('sw-update-dismiss').onclick=function(){ t.remove(); };
+}
 if('serviceWorker' in navigator){
   window.addEventListener('load',function(){
-    navigator.serviceWorker.register('sw.js').catch(function(){});
+    navigator.serviceWorker.register('sw.js').then(function(reg){
+      if(reg.waiting && navigator.serviceWorker.controller) showUpdateToast(reg);
+      reg.addEventListener('updatefound',function(){
+        var nw=reg.installing;
+        if(!nw) return;
+        nw.addEventListener('statechange',function(){
+          if(nw.state==='installed' && navigator.serviceWorker.controller){
+            showUpdateToast(reg);
+          }
+        });
+      });
+    }).catch(function(){});
+    var reloading=false;
+    navigator.serviceWorker.addEventListener('controllerchange',function(){
+      if(reloading) return;
+      reloading=true;
+      window.location.reload();
+    });
   });
 }
 </script>

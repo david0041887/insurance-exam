@@ -1,8 +1,9 @@
-const CACHE = 'ins-exam-v1';
+const CACHE = 'ins-exam-v5';
 const ASSETS = ['./', './index.html', './questions.json', './manifest.json', './icon.svg'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
+  // Don't auto skipWaiting — wait for client to confirm
 });
 
 self.addEventListener('activate', e => {
@@ -11,11 +12,19 @@ self.addEventListener('activate', e => {
   ).then(() => self.clients.claim()));
 });
 
+self.addEventListener('message', e => {
+  if (e.data === 'skip-waiting') self.skipWaiting();
+});
+
 self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
-  // Network-first for questions.json (so updates propagate); cache-first for other assets
-  if (req.url.endsWith('questions.json')) {
+  const url = new URL(req.url);
+  const isHTML = req.mode === 'navigate' || req.destination === 'document' ||
+                 url.pathname.endsWith('/') || url.pathname.endsWith('.html');
+  const isQuestions = url.pathname.endsWith('questions.json');
+
+  if (isHTML || isQuestions) {
     e.respondWith(
       fetch(req).then(r => {
         const copy = r.clone();
@@ -25,7 +34,6 @@ self.addEventListener('fetch', e => {
     );
     return;
   }
-  // Cache-first for static assets (manifest, icon, fonts, etc.)
   e.respondWith(
     caches.match(req).then(cached => cached || fetch(req).then(r => {
       const copy = r.clone();
