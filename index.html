@@ -32,17 +32,17 @@
   .header-stats{display:flex;gap:16px;align-items:center}
   .stat-chip{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:5px 13px;font-size:12px;color:var(--text2);display:flex;align-items:center;gap:5px}
   .stat-chip strong{color:var(--text);font-weight:600}
-  /* COUNTDOWN BANNER */
-  .countdown-banner{background:linear-gradient(135deg,rgba(239,68,68,.18),rgba(245,158,11,.12));border-bottom:2px solid rgba(239,68,68,.4);padding:14px 24px;display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;position:sticky;top:0;z-index:99}
-  .countdown-banner.past{background:linear-gradient(135deg,rgba(139,147,196,.12),rgba(139,147,196,.05));border-bottom-color:var(--border)}
-  .countdown-label{font-size:13px;color:var(--text2);font-weight:500;letter-spacing:.5px}
-  .countdown-days{font-size:32px;font-weight:800;color:#ef4444;font-variant-numeric:tabular-nums;line-height:1;letter-spacing:-1px;text-shadow:0 2px 10px rgba(239,68,68,.35)}
-  .countdown-days.warn{color:#f59e0b;text-shadow:0 2px 10px rgba(245,158,11,.35)}
-  .countdown-days.safe{color:var(--correct);text-shadow:0 2px 10px rgba(16,185,129,.3)}
-  .countdown-unit{font-size:14px;color:var(--text2);font-weight:600}
-  .countdown-date{font-size:11px;color:var(--text3);letter-spacing:1px}
-  @keyframes urgentPulse{0%,100%{opacity:1}50%{opacity:.6}}
-  .countdown-days.urgent{animation:urgentPulse 1.2s infinite}
+  /* COUNTDOWN IN HEADER */
+  .countdown-chip{display:flex;align-items:center;gap:8px;padding:7px 14px;border-radius:12px;background:linear-gradient(135deg,rgba(239,68,68,.18),rgba(245,158,11,.10));border:1px solid rgba(239,68,68,.35)}
+  .countdown-chip.past{background:rgba(139,147,196,.1);border-color:var(--border)}
+  .countdown-chip .c-label{font-size:10px;color:var(--text2);font-weight:600;letter-spacing:1px;white-space:nowrap}
+  .countdown-chip .c-days{font-size:22px;font-weight:800;color:#ef4444;font-variant-numeric:tabular-nums;line-height:1;letter-spacing:-1px}
+  .countdown-chip .c-days.warn{color:#f59e0b}
+  .countdown-chip .c-days.safe{color:var(--correct)}
+  .countdown-chip .c-unit{font-size:11px;color:var(--text2);font-weight:600}
+  .countdown-chip .c-date{font-size:9px;color:var(--text3);letter-spacing:.8px}
+  @keyframes urgentPulse{0%,100%{opacity:1}50%{opacity:.55}}
+  .countdown-chip .c-days.urgent{animation:urgentPulse 1.2s infinite}
   .layout{display:flex;flex:1;max-width:1160px;margin:0 auto;width:100%;padding:20px 16px;gap:20px}
   .sidebar{width:260px;flex-shrink:0;display:flex;flex-direction:column;gap:14px}
   .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px}
@@ -195,8 +195,10 @@
     .layout{flex-direction:column;padding:10px;gap:14px}
     .sidebar{width:100%}
     .header-stats{display:none}
-    .countdown-banner{padding:10px 16px;gap:10px}
-    .countdown-days{font-size:26px}
+    .countdown-chip{display:flex!important;padding:5px 10px;gap:5px}
+    .countdown-chip .c-label{display:none}
+    .countdown-chip .c-days{font-size:18px}
+    .countdown-chip .c-date{display:none}
     .question-card{padding:18px 16px}
     .question-text{font-size:14px}
     .year-grid{grid-template-columns:repeat(5,1fr)}
@@ -207,11 +209,19 @@
 </head>
 <body>
 <header class="header">
-  <div class="logo">
-    <div class="logo-icon">&#128203;</div>
-    <div>
-      <div class="logo-text">保險經紀代理 考古題</div>
-      <div class="logo-sub">INSURANCE BROKER EXAM PRACTICE</div>
+  <div style="display:flex;align-items:center;gap:16px;flex:1;min-width:0">
+    <div class="logo">
+      <div class="logo-icon">&#128203;</div>
+      <div>
+        <div class="logo-text">保險經紀代理 考古題</div>
+        <div class="logo-sub">INSURANCE BROKER EXAM PRACTICE</div>
+      </div>
+    </div>
+    <div class="countdown-chip" id="countdown-banner">
+      <span class="c-label">&#128226; 距考試</span>
+      <span class="c-days" id="countdown-days">--</span>
+      <span class="c-unit">天</span>
+      <span class="c-date">&nbsp;6/6</span>
     </div>
   </div>
   <div class="header-stats">
@@ -219,12 +229,6 @@
     <div class="stat-chip">&#10003; <strong id="hdr-correct" style="color:var(--correct)">0</strong> &nbsp;&#10007; <strong id="hdr-wrong" style="color:var(--wrong)">0</strong></div>
   </div>
 </header>
-<div class="countdown-banner" id="countdown-banner">
-  <span class="countdown-label">&#128226; 距離考試</span>
-  <span class="countdown-days" id="countdown-days">--</span>
-  <span class="countdown-unit">天</span>
-  <span class="countdown-date">&nbsp;｜&nbsp;2026/06/06</span>
-</div>
 <div class="layout">
   <aside class="sidebar">
     <div class="panel">
@@ -1255,21 +1259,20 @@ function updateCountdownBanner(){
   var daysEl=document.getElementById('countdown-days');
   if(!daysEl) return;
   if(d<0){
-    banner.className='countdown-banner past';
-    daysEl.textContent='考試已過';
-    daysEl.className='countdown-days';
+    banner.className='countdown-chip past';
+    daysEl.textContent='已過';
+    daysEl.className='c-days';
   } else if(d===0){
-    banner.className='countdown-banner';
-    daysEl.textContent='TODAY';
-    daysEl.className='countdown-days urgent';
+    banner.className='countdown-chip';
+    daysEl.textContent='今天';
+    daysEl.className='c-days urgent';
   } else {
-    banner.className='countdown-banner';
+    banner.className='countdown-chip';
     daysEl.textContent=d;
-    var cls='countdown-days';
+    var cls='c-days';
     if(d<=7) cls+=' urgent';
-    else if(d<=30) cls+='';
-    else if(d<=60) cls+=' warn';
-    else cls+=' safe';
+    else if(d<=60&&d>30) cls+=' warn';
+    else if(d>60) cls+=' safe';
     daysEl.className=cls;
   }
 }
