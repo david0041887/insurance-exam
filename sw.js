@@ -21,15 +21,16 @@ self.addEventListener('fetch', e => {
         const copy = r.clone();
         caches.open(CACHE).then(c => c.put(req, copy));
         return r;
-      }).catch(() => caches.match(req))
+      }).catch(() => caches.match(req).then(c => c || caches.match('./index.html')))
     );
-  } else {
-    e.respondWith(
-      caches.match(req).then(cached => cached || fetch(req).then(r => {
-        const copy = r.clone();
-        caches.open(CACHE).then(c => c.put(req, copy));
-        return r;
-      }))
-    );
+    return;
   }
+  // Cache-first for static assets (manifest, icon, fonts, etc.)
+  e.respondWith(
+    caches.match(req).then(cached => cached || fetch(req).then(r => {
+      const copy = r.clone();
+      caches.open(CACHE).then(c => c.put(req, copy));
+      return r;
+    }))
+  );
 });
