@@ -1093,7 +1093,7 @@ function formatQuestion(text){
       while(i<=source.length-ns.length){
         var pp=source.indexOf(ns,i); if(pp<0) break;
         var pv=pp>0?source[pp-1]:''; var nx=source[pp+ns.length]||'';
-        if(pv==='第'||/\d/.test(pv)||/\d/.test(nx)){ i=pp+1; continue; }
+        if(pv==='第'||/\d/.test(pv)||/\d/.test(nx)||nx===','||nx==='.'){ i=pp+1; continue; }
         f=pp; break;
       }
       if(f<0) break;
@@ -1231,7 +1231,7 @@ function renderQuestion(){
     var cls='option';
     if(ans){
       cls+=' disabled';
-      if(origLetter===q.answer) cls+=' correct';
+      if(q.answer.includes(origLetter)) cls+=' correct';
       else if(origLetter===ans.selected) cls+=' wrong';
     }
     div.className=cls;
@@ -1248,7 +1248,7 @@ function renderQuestion(){
 function selectAnswer(key){
   if(answered[cur]) return;
   var item=session[cur]; var q=item.q; var idx=item.idx;
-  var correct=key===q.answer;
+  var correct=q.answer.includes(key);
   answered[cur]={selected:key,correct:correct};
   if(!isViewOnly) recordAnswerStat(correct);
   if(correct){
