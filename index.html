@@ -81,6 +81,13 @@
   .bookmark-btn{background:transparent;border:none;cursor:pointer;font-size:20px;padding:4px;transition:transform .15s;color:var(--text3);font-family:inherit}
   .bookmark-btn:hover{transform:scale(1.15)}
   .bookmark-btn.on{color:var(--star)}
+  /* NOTE */
+  .note-toggle-btn{display:flex;align-items:center;gap:6px;margin-top:12px;padding:7px 14px;border-radius:8px;border:1.5px dashed var(--border);background:transparent;color:var(--text3);cursor:pointer;font-size:13px;font-family:inherit;transition:all .15s;width:fit-content}
+  .note-toggle-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .note-toggle-btn.has-note{border-color:var(--accent);color:var(--accent);border-style:solid}
+  .note-body{margin-top:8px}
+  .note-textarea{width:100%;min-height:80px;max-height:300px;resize:vertical;padding:10px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;font-family:inherit;line-height:1.6;box-sizing:border-box;transition:border-color .15s}
+  .note-textarea:focus{border-color:var(--accent);outline:none}
   /* ESSAY MODE */
   .essay-toggle-btn{background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;padding:7px 14px;border-radius:10px;border:none;cursor:pointer;font-weight:700;font-size:12px;font-family:inherit;box-shadow:0 4px 12px rgba(139,92,246,.35);white-space:nowrap}
   .essay-toggle-btn:hover{transform:translateY(-1px)}
@@ -412,6 +419,12 @@
         <div class="question-text" id="q-text"></div>
         <div class="options" id="q-options"></div>
       </div>
+      <div id="note-section">
+        <button class="note-toggle-btn" id="note-toggle-btn" onclick="toggleNote()">&#128221; 新增筆記</button>
+        <div id="note-body" class="note-body" style="display:none">
+          <textarea class="note-textarea" id="note-ta" placeholder="記錄重點、解題思路或相關法條..." oninput="debounceSaveNote()" onblur="saveNoteNow()"></textarea>
+        </div>
+      </div>
       <div class="nav-row">
         <button class="nav-btn" id="btn-prev" onclick="prevQ()">← 上一題</button>
         <button class="nav-btn skip-btn" onclick="skipQ()">略過</button>
@@ -500,6 +513,7 @@ var LS_STATS  = 'ins_stats_v1';  // {YYYY-MM-DD: {answered, correct}}
 var LS_THEME  = 'ins_theme_v1';  // 'dark' | 'light'
 var LS_ESSAY_DRAFTS = 'ins_essay_drafts_v1';  // {qid: text}
 var LS_ESSAY_RESULTS = 'ins_essay_results_v1'; // {qid: result}
+var LS_NOTES        = 'ins_notes_v1';          // {idx: text}
 
 function loadD(key){ try{ return JSON.parse(localStorage.getItem(key)||'{}'); }catch(e){ return {}; } }
 function saveD(key,d){ try{ localStorage.setItem(key,JSON.stringify(d)); }catch(e){} }
@@ -1191,6 +1205,39 @@ function renderStreakBar(idx){
   }
 }
 
+// ─── Notes ───────────────────────────────────────────────────────────────
+function getNoteText(idx){ return loadD(LS_NOTES)[idx]||''; }
+function saveNoteText(idx,text){ var d=loadD(LS_NOTES); if(text) d[idx]=text; else delete d[idx]; saveD(LS_NOTES,d); }
+function hasNote(idx){ return !!getNoteText(idx); }
+var _noteDebounce=null;
+function debounceSaveNote(){ clearTimeout(_noteDebounce); _noteDebounce=setTimeout(saveNoteNow,600); }
+function saveNoteNow(){
+  clearTimeout(_noteDebounce);
+  var ta=document.getElementById('note-ta');
+  if(!ta||!session[cur]) return;
+  var idx=session[cur].idx;
+  saveNoteText(idx,ta.value.trim());
+  var btn=document.getElementById('note-toggle-btn');
+  if(btn){
+    var has=!!ta.value.trim();
+    btn.className='note-toggle-btn'+(has?' has-note':'');
+    btn.innerHTML=has?'&#128221; 筆記':'&#128221; 新增筆記';
+  }
+}
+function toggleNote(){
+  saveNoteNow();
+  var body=document.getElementById('note-body');
+  if(!body) return;
+  var open=body.style.display!=='none';
+  body.style.display=open?'none':'block';
+  if(!open){ var ta=document.getElementById('note-ta'); if(ta) ta.focus(); }
+  var btn=document.getElementById('note-toggle-btn');
+  if(btn){
+    var has=session[cur]&&hasNote(session[cur].idx);
+    btn.innerHTML=open?(has?'&#128221; 筆記':'&#128221; 新增筆記'):'&#128316; 收起筆記';
+  }
+}
+
 function renderQuestion(){
   if(cur>=session.length){showFinished();return;}
   var item=session[cur]; var q=item.q; var idx=item.idx;
@@ -1241,6 +1288,14 @@ function renderQuestion(){
     if(!ans)(function(key){div.onclick=function(){selectAnswer(key);};})(origLetter);
     optEl.appendChild(div);
   });
+  // Notes – reset panel on each question
+  var _noteText=getNoteText(idx);
+  var _noteBtn=document.getElementById('note-toggle-btn');
+  if(_noteBtn){ _noteBtn.className='note-toggle-btn'+(_noteText?' has-note':''); _noteBtn.innerHTML=_noteText?'&#128221; 筆記':'&#128221; 新增筆記'; }
+  var _noteBody=document.getElementById('note-body');
+  if(_noteBody) _noteBody.style.display='none';
+  var _noteTa=document.getElementById('note-ta');
+  if(_noteTa) _noteTa.value=_noteText;
   document.getElementById('btn-prev').disabled=cur===0;
   document.getElementById('btn-next').innerHTML=cur===session.length-1?'完成 ✓':'下一題 →';
 }
