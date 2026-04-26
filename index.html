@@ -545,6 +545,7 @@ var LS_ESSAY_DRAFTS = 'ins_essay_drafts_v1';  // {qid: text}
 var LS_ESSAY_RESULTS = 'ins_essay_results_v1'; // {qid: result}
 var LS_NOTES        = 'ins_notes_v1';
 var LS_EXPLAIN      = 'ins_explain_v1';
+var STATIC_EXPLANATIONS = null;
 var EXPLAIN_URL     = 'https://insurance-exam-grader.davidyoudavid.workers.dev/explain';          // {idx: text}
 
 function loadD(key){ try{ return JSON.parse(localStorage.getItem(key)||'{}'); }catch(e){ return {}; } }
@@ -894,8 +895,12 @@ function bootApp(){
   document.getElementById('welcome-loading').style.display='none';
   document.getElementById('welcome-ready').style.display='block';
 }
-loadData().then(function(data){
-  ALL_QUESTIONS=data;
+Promise.all([
+  loadData(),
+  fetch('explanations.json',{cache:'no-cache'}).then(function(r){return r.json();}).catch(function(){return null;})
+]).then(function(results){
+  ALL_QUESTIONS=results[0];
+  STATIC_EXPLANATIONS=results[1];
   bootApp();
 }).catch(function(err){
   document.getElementById('welcome-loading').innerHTML='<div style="color:var(--wrong)">⚠ 題庫載入失敗</div><div style="margin-top:8px;color:var(--text3);font-size:12px">'+(err.message||err)+'</div>';
@@ -1258,9 +1263,16 @@ function showExplainData(data){
 }
 function fetchExplain(){
   if(!session[cur]) return;
+  var idx=session[cur].idx;
   var q=session[cur].q;
   var cached=getCachedExplain(q);
   if(cached){ showExplainData(cached); return; }
+  // Use pre-generated static explanation
+  if(STATIC_EXPLANATIONS&&STATIC_EXPLANATIONS[idx]){
+    var data=STATIC_EXPLANATIONS[idx];
+    cacheExplain(q,data); showExplainData(data); return;
+  }
+  // Fallback to Worker API if static file not loaded
   var sec=document.getElementById('explain-section');
   var loading=document.getElementById('explain-loading');
   var cont=document.getElementById('explain-content');
