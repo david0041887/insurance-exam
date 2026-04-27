@@ -264,6 +264,8 @@
   .sec-stat-stars{display:flex;gap:3px;align-items:center;white-space:nowrap}
   /* MOBILE */
   @media(max-width:768px){
+    .nav-row{position:fixed;bottom:0;left:0;right:0;z-index:50;background:var(--bg);padding:10px 16px;border-top:1px solid var(--border)}
+    #bottom-panels{padding-bottom:70px}
     .layout{flex-direction:column;padding:10px;gap:14px}
     .sidebar{width:100%}
     .header-stats{gap:6px;flex-wrap:wrap;justify-content:flex-end}
@@ -1272,6 +1274,8 @@ function fetchExplain(){
     var data=STATIC_EXPLANATIONS[idx];
     cacheExplain(q,data); showExplainData(data); return;
   }
+  // Static file loaded but no explanation for this question — skip silently
+  if(STATIC_EXPLANATIONS){ return; }
   // Fallback to Worker API if static file not loaded
   var sec=document.getElementById('explain-section');
   var loading=document.getElementById('explain-loading');
