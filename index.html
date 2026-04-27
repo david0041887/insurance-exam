@@ -81,10 +81,9 @@
   .bookmark-btn{background:transparent;border:none;cursor:pointer;font-size:20px;padding:4px;transition:transform .15s;color:var(--text3);font-family:inherit}
   .bookmark-btn:hover{transform:scale(1.15)}
   .bookmark-btn.on{color:var(--star)}
-  /* NOTE + EXPLAIN LAYOUT */
+  /* NOTE LAYOUT */
   #bottom-panels{display:flex;gap:12px;align-items:flex-start;margin-top:12px;flex-wrap:wrap}
   #note-section{flex-shrink:0;min-width:160px}
-  #explain-section{flex:1;min-width:220px}
   /* NOTE */
   .note-toggle-btn{display:flex;align-items:center;gap:6px;margin-top:0;padding:7px 14px;border-radius:8px;border:1.5px dashed var(--border);background:transparent;color:var(--text3);cursor:pointer;font-size:13px;font-family:inherit;transition:all .15s;width:fit-content}
   .note-toggle-btn:hover{border-color:var(--accent);color:var(--accent)}
@@ -92,17 +91,6 @@
   .note-body{margin-top:8px}
   .note-textarea{width:100%;min-height:80px;max-height:300px;resize:vertical;padding:10px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;font-family:inherit;line-height:1.6;box-sizing:border-box;transition:border-color .15s}
   .note-textarea:focus{border-color:var(--accent);outline:none}
-  /* EXPLAIN */
-  .explain-panel{border-radius:10px;border:1.5px solid var(--accent);background:var(--surface2);padding:12px 14px}
-  .explain-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:13px;font-weight:600;color:var(--accent)}
-  .explain-close-btn{background:transparent;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:0 4px;line-height:1;font-family:inherit}
-  .explain-close-btn:hover{color:var(--text)}
-  #explain-body{font-size:14px;line-height:1.7;color:var(--text)}
-  .explain-loading{display:flex;align-items:center;gap:8px;color:var(--text3);font-size:13px}
-  .explain-law{margin-top:10px;padding:8px 10px;border-radius:7px;background:var(--surface);border-left:3px solid var(--accent);font-size:13px;color:var(--text2)}
-  .explain-wrong{margin-top:8px;font-size:12px;color:var(--text3);padding:6px 10px;border-radius:6px;background:var(--surface);border-left:3px solid #e05}
-  .spin{width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0}
-  @keyframes spin{to{transform:rotate(360deg)}}
   /* ESSAY MODE */
   .essay-toggle-btn{background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;padding:7px 14px;border-radius:10px;border:none;cursor:pointer;font-weight:700;font-size:12px;font-family:inherit;box-shadow:0 4px 12px rgba(139,92,246,.35);white-space:nowrap}
   .essay-toggle-btn:hover{transform:translateY(-1px)}
@@ -443,19 +431,6 @@
           <textarea class="note-textarea" id="note-ta" placeholder="記錄重點、解題思路或相關法條..." oninput="debounceSaveNote()" onblur="saveNoteNow()"></textarea>
         </div>
       </div>
-      <div id="explain-section" style="display:none">
-        <div class="explain-panel">
-          <div class="explain-hdr"><span>&#128214; 題目解析</span><button class="explain-close-btn" onclick="hideExplain()">&#10005;</button></div>
-          <div id="explain-body">
-            <div class="explain-loading" id="explain-loading"><div class="spin"></div>生成解析中...</div>
-            <div id="explain-content" style="display:none">
-              <div id="explain-text"></div>
-              <div class="explain-law" id="explain-law" style="display:none"></div>
-              <div class="explain-wrong" id="explain-wrong" style="display:none"></div>
-            </div>
-          </div>
-        </div>
-      </div>
       </div>
       <div class="nav-row">
         <button class="nav-btn" id="btn-prev" onclick="prevQ()">← 上一題</button>
@@ -546,9 +521,6 @@ var LS_THEME  = 'ins_theme_v1';  // 'dark' | 'light'
 var LS_ESSAY_DRAFTS = 'ins_essay_drafts_v1';  // {qid: text}
 var LS_ESSAY_RESULTS = 'ins_essay_results_v1'; // {qid: result}
 var LS_NOTES        = 'ins_notes_v1';
-var LS_EXPLAIN      = 'ins_explain_v1';
-var STATIC_EXPLANATIONS = null;
-var EXPLAIN_URL     = 'https://insurance-exam-grader.davidyoudavid.workers.dev/explain';          // {idx: text}
 
 function loadD(key){ try{ return JSON.parse(localStorage.getItem(key)||'{}'); }catch(e){ return {}; } }
 function saveD(key,d){ try{ localStorage.setItem(key,JSON.stringify(d)); }catch(e){} }
@@ -897,12 +869,8 @@ function bootApp(){
   document.getElementById('welcome-loading').style.display='none';
   document.getElementById('welcome-ready').style.display='block';
 }
-Promise.all([
-  loadData(),
-  fetch('explanations.json',{cache:'no-cache'}).then(function(r){return r.json();}).catch(function(){return null;})
-]).then(function(results){
-  ALL_QUESTIONS=results[0];
-  STATIC_EXPLANATIONS=results[1];
+loadData().then(function(qs){
+  ALL_QUESTIONS=qs;
   bootApp();
 }).catch(function(err){
   document.getElementById('welcome-loading').innerHTML='<div style="color:var(--wrong)">⚠ 題庫載入失敗</div><div style="margin-top:8px;color:var(--text3);font-size:12px">'+(err.message||err)+'</div>';
@@ -1244,54 +1212,6 @@ function renderStreakBar(idx){
   }
 }
 
-// -- Explain ----------------------------------------------------------------
-function _explainKey(q){ return (q.question||'').replace(/\s+/g,'').slice(0,50); }
-function getCachedExplain(q){ return loadD(LS_EXPLAIN)[_explainKey(q)]||null; }
-function cacheExplain(q,d){ var s=loadD(LS_EXPLAIN); s[_explainKey(q)]=d; saveD(LS_EXPLAIN,s); }
-function hideExplain(){ var s=document.getElementById('explain-section'); if(s) s.style.display='none'; }
-function showExplainData(data){
-  var sec=document.getElementById('explain-section');
-  var loading=document.getElementById('explain-loading');
-  var cont=document.getElementById('explain-content');
-  var txt=document.getElementById('explain-text');
-  var law=document.getElementById('explain-law');
-  var wrong=document.getElementById('explain-wrong');
-  if(sec) sec.style.display='block';
-  if(loading) loading.style.display='none';
-  if(cont) cont.style.display='block';
-  if(txt) txt.innerHTML=esc(data.explanation||'').replace(/\n/g,'<br>');
-  if(law){ if(data.keyLaw){law.style.display='block';law.innerHTML='&#128221; '+esc(data.keyLaw);}else law.style.display='none'; }
-  if(wrong){ if(data.wrongNote){wrong.style.display='block';wrong.innerHTML='&#9888; '+esc(data.wrongNote);}else wrong.style.display='none'; }
-}
-function fetchExplain(){
-  if(!session[cur]) return;
-  var idx=session[cur].idx;
-  var q=session[cur].q;
-  var cached=getCachedExplain(q);
-  if(cached){ showExplainData(cached); return; }
-  // Use pre-generated static explanation
-  if(STATIC_EXPLANATIONS&&STATIC_EXPLANATIONS[idx]){
-    var data=STATIC_EXPLANATIONS[idx];
-    cacheExplain(q,data); showExplainData(data); return;
-  }
-  // Static file loaded but no explanation for this question — skip silently
-  if(STATIC_EXPLANATIONS){ return; }
-  // Fallback to Worker API if static file not loaded
-  var sec=document.getElementById('explain-section');
-  var loading=document.getElementById('explain-loading');
-  var cont=document.getElementById('explain-content');
-  if(sec) sec.style.display='block';
-  if(loading) loading.style.display='flex';
-  if(cont) cont.style.display='none';
-  fetch(EXPLAIN_URL,{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({question:q.question,options:q.options,answer:q.answer})})
-    .then(function(r){return r.json();})
-    .then(function(data){
-      if(data.explanation){ cacheExplain(q,data); showExplainData(data); }
-      else showExplainData({explanation:data.error||'解析生成失敗，請稍後再試。'});
-    }).catch(function(){ showExplainData({explanation:'網路錯誤，無法取得解析。'}); });
-}
-
 // ─── Notes ───────────────────────────────────────────────────────────────
 function getNoteText(idx){ return loadD(LS_NOTES)[idx]||''; }
 function saveNoteText(idx,text){ var d=loadD(LS_NOTES); if(text) d[idx]=text; else delete d[idx]; saveD(LS_NOTES,d); }
@@ -1376,14 +1296,6 @@ function renderQuestion(){
     optEl.appendChild(div);
   });
   // Notes – reset panel on each question
-  // Reset explain panel
-  var _exSec=document.getElementById('explain-section');
-  if(_exSec) _exSec.style.display='none';
-  var _exLoad=document.getElementById('explain-loading');
-  var _exCont=document.getElementById('explain-content');
-  if(_exLoad) _exLoad.style.display='flex';
-  if(_exCont) _exCont.style.display='none';
-  if(ans){ var _exC=getCachedExplain(q); if(_exC) showExplainData(_exC); }
   var _noteText=getNoteText(idx);
   var _noteBtn=document.getElementById('note-toggle-btn');
   if(_noteBtn){ _noteBtn.className='note-toggle-btn'+(_noteText?' has-note':''); _noteBtn.innerHTML=_noteText?'&#128221; 筆記':'&#128221; 新增筆記'; }
@@ -1420,7 +1332,6 @@ function selectAnswer(key){
   }
   if(!isViewOnly) updateSidePanels();
   renderQuestion();
-  setTimeout(fetchExplain,50);
 }
 
 function nextQ(){ if(cur<session.length-1){cur++;renderQuestion();}else showFinished(); }
