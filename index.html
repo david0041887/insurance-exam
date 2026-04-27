@@ -529,10 +529,87 @@ var LS_THEME  = 'ins_theme_v1';  // 'dark' | 'light'
 var LS_ESSAY_DRAFTS = 'ins_essay_drafts_v1';  // {qid: text}
 var LS_ESSAY_RESULTS = 'ins_essay_results_v1'; // {qid: result}
 var LS_NOTES        = 'ins_notes_v1';
-var LS_NOTE_IMGS    = 'ins_note_imgs_v1';
+
+// ─── IndexedDB for note images (no localStorage size limit) ──────────
+var _imgDB=null;
+function openImgDB(){
+  if(_imgDB) return Promise.resolve(_imgDB);
+  return new Promise(function(resolve,reject){
+    var req=indexedDB.open('ins_note_imgs_db',1);
+    req.onupgradeneeded=function(e){ e.target.result.createObjectStore('imgs',{keyPath:'idx'}); };
+    req.onsuccess=function(e){ _imgDB=e.target.result; resolve(_imgDB); };
+    req.onerror=function(){ reject(req.error); };
+  });
+}
+function getNoteImgs(idx){
+  return openImgDB().then(function(db){
+    return new Promise(function(resolve){
+      var tx=db.transaction('imgs','readonly');
+      var req=tx.objectStore('imgs').get(idx);
+      req.onsuccess=function(){ resolve(req.result?req.result.data:[]); };
+      req.onerror=function(){ resolve([]); };
+    });
+  }).catch(function(){ return []; });
+}
+function saveNoteImgsDB(idx,imgs){
+  return openImgDB().then(function(db){
+    return new Promise(function(resolve){
+      var tx=db.transaction('imgs','readwrite');
+      var store=tx.objectStore('imgs');
+      if(imgs&&imgs.length){ store.put({idx:idx,data:imgs}); } else{ store.delete(idx); }
+      tx.oncomplete=resolve; tx.onerror=resolve;
+    });
+  }).catch(function(){});
+}
+function getAllNoteImgsFromDB(){
+  return openImgDB().then(function(db){
+    return new Promise(function(resolve){
+      var tx=db.transaction('imgs','readonly');
+      var req=tx.objectStore('imgs').getAll();
+      req.onsuccess=function(){
+        var r={}; (req.result||[]).forEach(function(e){ r[e.idx]=e.data; }); resolve(r);
+      };
+      req.onerror=function(){ resolve({}); };
+    });
+  }).catch(function(){ return {}; });
+}
+function clearAllNoteImgsDB(){
+  return openImgDB().then(function(db){
+    return new Promise(function(resolve){
+      var tx=db.transaction('imgs','readwrite');
+      tx.objectStore('imgs').clear();
+      tx.oncomplete=resolve; tx.onerror=resolve;
+    });
+  }).catch(function(){});
+}
+function migrateNoteImgs(){
+  var old=localStorage.getItem('ins_note_imgs_v1'); if(!old) return;
+  try{
+    var d=JSON.parse(old);
+    openImgDB().then(function(db){
+      var tx=db.transaction('imgs','readwrite'); var store=tx.objectStore('imgs');
+      Object.keys(d).forEach(function(k){ if(d[k]&&d[k].length) store.put({idx:parseInt(k),data:d[k]}); });
+      tx.oncomplete=function(){ localStorage.removeItem('ins_note_imgs_v1'); };
+    });
+  }catch(e){}
+}
 
 function loadD(key){ try{ return JSON.parse(localStorage.getItem(key)||'{}'); }catch(e){ return {}; } }
-function saveD(key,d){ try{ localStorage.setItem(key,JSON.stringify(d)); }catch(e){} }
+function saveD(key,d){
+  try{ localStorage.setItem(key,JSON.stringify(d)); }
+  catch(e){
+    if(e.name==='QuotaExceededError'||e.code===22||e.code===1014){
+      if(!document.getElementById('storage-warn-toast')){
+        var t=document.createElement('div');
+        t.id='storage-warn-toast'; t.className='update-toast';
+        t.style.cssText='background:linear-gradient(135deg,#7c3aed,#ef4444)';
+        t.innerHTML='⚠️ 儲存空間不足，部分資料未能存入。建議先匯出備份。'
+          +'<button onclick="this.parentNode.remove()" style="margin-left:10px;background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-family:inherit">✕</button>';
+        document.body.appendChild(t);
+      }
+    }
+  }
+}
 
 // ─── Wrong Pool ──────────────────────────────────────────────────────
 function getWrongPool(){ return loadD(LS_WRONG); }
@@ -1228,8 +1305,7 @@ function hasNote(idx){ return !!getNoteText(idx); }
 var _noteDebounce=null;
 function debounceSaveNote(){ clearTimeout(_noteDebounce); _noteDebounce=setTimeout(saveNoteNow,600); }
 
-function getNoteImgs(idx){ var d=loadD(LS_NOTE_IMGS); return d[idx]||[]; }
-function saveNoteImgs(idx,imgs){ var d=loadD(LS_NOTE_IMGS); if(imgs&&imgs.length) d[idx]=imgs; else delete d[idx]; saveD(LS_NOTE_IMGS,d); }
+// getNoteImgs / saveNoteImgs now backed by IndexedDB (see openImgDB above)
 
 function compressImage(file,cb){
   var reader=new FileReader();
@@ -1248,7 +1324,10 @@ function compressImage(file,cb){
 }
 
 function addNoteImgData(idx,dataUrl){
-  var imgs=getNoteImgs(idx); imgs.push(dataUrl); saveNoteImgs(idx,imgs); renderNoteImgs(idx); updateNoteBtn(idx);
+  getNoteImgs(idx).then(function(imgs){
+    imgs.push(dataUrl);
+    saveNoteImgsDB(idx,imgs).then(function(){ renderNoteImgs(idx); updateNoteBtn(idx); });
+  });
 }
 
 function addNoteImgFromFile(e){
@@ -1271,26 +1350,31 @@ function handleNotePaste(e){
 }
 
 function removeNoteImg(idx,i){
-  var imgs=getNoteImgs(idx); imgs.splice(i,1); saveNoteImgs(idx,imgs); renderNoteImgs(idx); updateNoteBtn(idx);
+  getNoteImgs(idx).then(function(imgs){
+    imgs.splice(i,1);
+    saveNoteImgsDB(idx,imgs).then(function(){ renderNoteImgs(idx); updateNoteBtn(idx); });
+  });
 }
 
 function renderNoteImgs(idx){
-  var el=document.getElementById('note-imgs'); if(!el) return;
-  var imgs=getNoteImgs(idx);
-  el.innerHTML=imgs.map(function(src,i){
-    return '<div class="note-img-wrap"><img class="note-img-thumb" src="'+src+'" onclick="window.open(this.src)">'
-      +'<button class="note-img-del" onclick="removeNoteImg('+idx+','+i+')">×</button></div>';
-  }).join('');
+  getNoteImgs(idx).then(function(imgs){
+    var el=document.getElementById('note-imgs'); if(!el) return;
+    el.innerHTML=imgs.map(function(src,i){
+      return '<div class="note-img-wrap"><img class="note-img-thumb" src="'+src+'" onclick="window.open(this.src)">'
+        +'<button class="note-img-del" onclick="removeNoteImg('+idx+','+i+')">×</button></div>';
+    }).join('');
+  });
 }
 
 function updateNoteBtn(idx){
-  var btn=document.getElementById('note-toggle-btn'); if(!btn) return;
-  var has=!!getNoteText(idx)||getNoteImgs(idx).length>0;
-  btn.className='note-toggle-btn'+(has?' has-note':'');
-  var body=document.getElementById('note-body');
-  var open=body&&body.style.display!=='none';
-  if(open){ btn.innerHTML='&#128316; 收起筆記'; }
-  else{ btn.innerHTML=has?'&#128221; 筆記':'&#128221; 新增筆記'; }
+  getNoteImgs(idx).then(function(imgs){
+    var btn=document.getElementById('note-toggle-btn'); if(!btn) return;
+    var has=!!getNoteText(idx)||imgs.length>0;
+    btn.className='note-toggle-btn'+(has?' has-note':'');
+    var body=document.getElementById('note-body');
+    var open=body&&body.style.display!=='none';
+    btn.innerHTML=open?'&#128316; 收起筆記':(has?'&#128221; 筆記':'&#128221; 新增筆記');
+  });
 }
 
 function saveNoteNow(){
@@ -1667,13 +1751,19 @@ function hideStatsModal(){ document.getElementById('stats-modal').className='mod
 
 // ─── Export / Import ─────────────────────────────────────────────────
 function exportData(){
-  var data={wrong:loadD(LS_WRONG),stars:loadD(LS_STARS),bookmarks:getBookmarks(),stats:loadD(LS_STATS),theme:localStorage.getItem(LS_THEME)||'dark',exportedAt:new Date().toISOString()};
-  var blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
-  var url=URL.createObjectURL(blob);
-  var a=document.createElement('a');
-  a.href=url; a.download='insurance-exam-progress-'+todayKey()+'.json';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  getAllNoteImgsFromDB().then(function(noteImgs){
+    var data={
+      wrong:loadD(LS_WRONG),stars:loadD(LS_STARS),bookmarks:getBookmarks(),
+      stats:loadD(LS_STATS),notes:loadD(LS_NOTES),noteImgs:noteImgs,
+      theme:localStorage.getItem(LS_THEME)||'dark',exportedAt:new Date().toISOString()
+    };
+    var blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url; a.download='insurance-exam-progress-'+todayKey()+'.json';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
 }
 function importData(ev){
   var f=ev.target.files&&ev.target.files[0]; if(!f) return;
@@ -1686,9 +1776,19 @@ function importData(ev){
       if(d.stars) saveD(LS_STARS,d.stars);
       if(d.bookmarks) saveD(LS_BOOKMARKS,d.bookmarks);
       if(d.stats) saveD(LS_STATS,d.stats);
+      if(d.notes) saveD(LS_NOTES,d.notes);
       if(d.theme) localStorage.setItem(LS_THEME,d.theme);
+      if(d.noteImgs&&Object.keys(d.noteImgs).length){
+        openImgDB().then(function(db){
+          var tx=db.transaction('imgs','readwrite'); var store=tx.objectStore('imgs');
+          store.clear();
+          Object.keys(d.noteImgs).forEach(function(k){
+            if(d.noteImgs[k]&&d.noteImgs[k].length) store.put({idx:parseInt(k),data:d.noteImgs[k]});
+          });
+        });
+      }
       applyTheme(); updateSidePanels();
-      alert('匯入完成');
+      alert('匯入完成（包含筆記與圖片）');
     }catch(err){ alert('匯入失敗：'+err.message); }
   };
   rd.readAsText(f);
@@ -1708,6 +1808,7 @@ function toggleTheme(){
   applyTheme();
 }
 applyTheme();
+migrateNoteImgs();
 
 // ─── PWA install prompt ──────────────────────────────────────────────
 var deferredPrompt=null;
