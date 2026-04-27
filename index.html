@@ -91,6 +91,12 @@
   .note-body{margin-top:8px}
   .note-textarea{width:100%;min-height:80px;max-height:300px;resize:vertical;padding:10px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;font-family:inherit;line-height:1.6;box-sizing:border-box;transition:border-color .15s}
   .note-textarea:focus{border-color:var(--accent);outline:none}
+  .note-imgs-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .note-img-wrap{position:relative}
+  .note-img-thumb{max-width:150px;max-height:110px;border-radius:8px;border:1.5px solid var(--border);cursor:zoom-in;display:block;object-fit:cover}
+  .note-img-del{position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:#ef4444;color:#fff;border:none;cursor:pointer;font-size:14px;line-height:1;font-family:inherit;display:flex;align-items:center;justify-content:center;padding:0}
+  .note-img-add{display:inline-flex;align-items:center;gap:5px;margin-top:8px;padding:6px 12px;border-radius:8px;border:1.5px dashed var(--border);color:var(--text3);cursor:pointer;font-size:12px;transition:all .15s}
+  .note-img-add:hover{border-color:var(--accent);color:var(--accent)}
   /* ESSAY MODE */
   .essay-toggle-btn{background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;padding:7px 14px;border-radius:10px;border:none;cursor:pointer;font-weight:700;font-size:12px;font-family:inherit;box-shadow:0 4px 12px rgba(139,92,246,.35);white-space:nowrap}
   .essay-toggle-btn:hover{transform:translateY(-1px)}
@@ -428,7 +434,9 @@
       <div id="note-section">
         <button class="note-toggle-btn" id="note-toggle-btn" onclick="toggleNote()">&#128221; 新增筆記</button>
         <div id="note-body" class="note-body" style="display:none">
-          <textarea class="note-textarea" id="note-ta" placeholder="記錄重點、解題思路或相關法條..." oninput="debounceSaveNote()" onblur="saveNoteNow()"></textarea>
+          <textarea class="note-textarea" id="note-ta" placeholder="記錄重點、解題思路或相關法條..." oninput="debounceSaveNote()" onblur="saveNoteNow()" onpaste="handleNotePaste(event)"></textarea>
+          <div id="note-imgs" class="note-imgs-grid"></div>
+          <label class="note-img-add">&#128247; 上傳照片<input type="file" accept="image/*" multiple onchange="addNoteImgFromFile(event)" style="display:none"></label>
         </div>
       </div>
       </div>
@@ -521,6 +529,7 @@ var LS_THEME  = 'ins_theme_v1';  // 'dark' | 'light'
 var LS_ESSAY_DRAFTS = 'ins_essay_drafts_v1';  // {qid: text}
 var LS_ESSAY_RESULTS = 'ins_essay_results_v1'; // {qid: result}
 var LS_NOTES        = 'ins_notes_v1';
+var LS_NOTE_IMGS    = 'ins_note_imgs_v1';
 
 function loadD(key){ try{ return JSON.parse(localStorage.getItem(key)||'{}'); }catch(e){ return {}; } }
 function saveD(key,d){ try{ localStorage.setItem(key,JSON.stringify(d)); }catch(e){} }
@@ -1218,18 +1227,79 @@ function saveNoteText(idx,text){ var d=loadD(LS_NOTES); if(text) d[idx]=text; el
 function hasNote(idx){ return !!getNoteText(idx); }
 var _noteDebounce=null;
 function debounceSaveNote(){ clearTimeout(_noteDebounce); _noteDebounce=setTimeout(saveNoteNow,600); }
+
+function getNoteImgs(idx){ var d=loadD(LS_NOTE_IMGS); return d[idx]||[]; }
+function saveNoteImgs(idx,imgs){ var d=loadD(LS_NOTE_IMGS); if(imgs&&imgs.length) d[idx]=imgs; else delete d[idx]; saveD(LS_NOTE_IMGS,d); }
+
+function compressImage(file,cb){
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var img=new Image();
+    img.onload=function(){
+      var MAX=900; var w=img.width; var h=img.height;
+      if(w>MAX||h>MAX){ if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;} }
+      var c=document.createElement('canvas'); c.width=w; c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      cb(c.toDataURL('image/jpeg',0.75));
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function addNoteImgData(idx,dataUrl){
+  var imgs=getNoteImgs(idx); imgs.push(dataUrl); saveNoteImgs(idx,imgs); renderNoteImgs(idx); updateNoteBtn(idx);
+}
+
+function addNoteImgFromFile(e){
+  if(!session[cur]) return;
+  var idx=session[cur].idx;
+  Array.from(e.target.files).forEach(function(f){ compressImage(f,function(d){ addNoteImgData(idx,d); }); });
+  e.target.value='';
+}
+
+function handleNotePaste(e){
+  if(!session[cur]) return;
+  var idx=session[cur].idx;
+  var items=(e.clipboardData||e.originalEvent&&e.originalEvent.clipboardData||{}).items||[];
+  for(var i=0;i<items.length;i++){
+    if(items[i].type.indexOf('image')===0){
+      e.preventDefault();
+      compressImage(items[i].getAsFile(),function(d){ addNoteImgData(idx,d); });
+    }
+  }
+}
+
+function removeNoteImg(idx,i){
+  var imgs=getNoteImgs(idx); imgs.splice(i,1); saveNoteImgs(idx,imgs); renderNoteImgs(idx); updateNoteBtn(idx);
+}
+
+function renderNoteImgs(idx){
+  var el=document.getElementById('note-imgs'); if(!el) return;
+  var imgs=getNoteImgs(idx);
+  el.innerHTML=imgs.map(function(src,i){
+    return '<div class="note-img-wrap"><img class="note-img-thumb" src="'+src+'" onclick="window.open(this.src)">'
+      +'<button class="note-img-del" onclick="removeNoteImg('+idx+','+i+')">×</button></div>';
+  }).join('');
+}
+
+function updateNoteBtn(idx){
+  var btn=document.getElementById('note-toggle-btn'); if(!btn) return;
+  var has=!!getNoteText(idx)||getNoteImgs(idx).length>0;
+  btn.className='note-toggle-btn'+(has?' has-note':'');
+  var body=document.getElementById('note-body');
+  var open=body&&body.style.display!=='none';
+  if(open){ btn.innerHTML='&#128316; 收起筆記'; }
+  else{ btn.innerHTML=has?'&#128221; 筆記':'&#128221; 新增筆記'; }
+}
+
 function saveNoteNow(){
   clearTimeout(_noteDebounce);
   var ta=document.getElementById('note-ta');
   if(!ta||!session[cur]) return;
   var idx=session[cur].idx;
   saveNoteText(idx,ta.value.trim());
-  var btn=document.getElementById('note-toggle-btn');
-  if(btn){
-    var has=!!ta.value.trim();
-    btn.className='note-toggle-btn'+(has?' has-note':'');
-    btn.innerHTML=has?'&#128221; 筆記':'&#128221; 新增筆記';
-  }
+  updateNoteBtn(idx);
 }
 function toggleNote(){
   saveNoteNow();
@@ -1238,11 +1308,7 @@ function toggleNote(){
   var open=body.style.display!=='none';
   body.style.display=open?'none':'block';
   if(!open){ var ta=document.getElementById('note-ta'); if(ta) ta.focus(); }
-  var btn=document.getElementById('note-toggle-btn');
-  if(btn){
-    var has=session[cur]&&hasNote(session[cur].idx);
-    btn.innerHTML=open?(has?'&#128221; 筆記':'&#128221; 新增筆記'):'&#128316; 收起筆記';
-  }
+  if(session[cur]) updateNoteBtn(session[cur].idx);
 }
 
 function renderQuestion(){
@@ -1296,13 +1362,12 @@ function renderQuestion(){
     optEl.appendChild(div);
   });
   // Notes – reset panel on each question
-  var _noteText=getNoteText(idx);
-  var _noteBtn=document.getElementById('note-toggle-btn');
-  if(_noteBtn){ _noteBtn.className='note-toggle-btn'+(_noteText?' has-note':''); _noteBtn.innerHTML=_noteText?'&#128221; 筆記':'&#128221; 新增筆記'; }
   var _noteBody=document.getElementById('note-body');
   if(_noteBody) _noteBody.style.display='none';
   var _noteTa=document.getElementById('note-ta');
-  if(_noteTa) _noteTa.value=_noteText;
+  if(_noteTa) _noteTa.value=getNoteText(idx);
+  renderNoteImgs(idx);
+  updateNoteBtn(idx);
   document.getElementById('btn-prev').disabled=cur===0;
   document.getElementById('btn-next').innerHTML=cur===session.length-1?'完成 ✓':'下一題 →';
 }
