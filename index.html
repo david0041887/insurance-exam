@@ -1243,7 +1243,11 @@ function formatQuestion(text){
   }
 
   var qIdx=-1;
-  for(var i=text.length-1;i>=0;i--){if(text[i]==='?'||text[i]==='？'){qIdx=i;break;}}
+  for(var i=text.length-1;i>=0;i--){
+    if(text[i]==='?'||text[i]==='？'){qIdx=i;break;}
+    // colon followed by digit also signals start of numbered list
+    if((text[i]===':'||text[i]==='：')&&/\d/.test(text[i+1]||'')){qIdx=i;break;}
+  }
 
   // Try 1: items after the last ? (standard format)
   if(qIdx>=0){
