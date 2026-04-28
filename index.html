@@ -1216,8 +1216,12 @@ function formatQuestion(text){
       while(i<=source.length-ns.length){
         var pp=source.indexOf(ns,i); if(pp<0) break;
         var pv=pp>0?source[pp-1]:''; var nx=source[pp+ns.length]||'';
-        if(!/[\u4e00-\u9fff]/.test(nx)||pv==='第'||/\d/.test(pv)){ i=pp+1; continue; }
-        f=pp; break;
+        // allow single space between digit and CJK (handles "4 重要人物" style)
+        var checkNx=(nx===' '&&pp+ns.length+1<source.length)?source[pp+ns.length+1]:nx;
+        var UNITS='月日年週時分秒萬億千百元';
+        if(!/[\u4e00-\u9fff]/.test(checkNx)||UNITS.indexOf(checkNx)>=0||
+           pv==='第'||/\d/.test(pv)){i=pp+1;continue;}
+        f=pp;break;
       }
       if(f<0) break;
       p.push({num:n,pos:f}); from=f+ns.length; n++;
