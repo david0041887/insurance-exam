@@ -77,6 +77,8 @@
   .search-item-text{font-size:11px;color:var(--text2);line-height:1.5}
   .search-item-text mark{background:rgba(79,110,247,.25);color:var(--accent);padding:0 2px;border-radius:2px;font-weight:600}
   .search-empty{color:var(--text3);font-size:11px;text-align:center;padding:10px}
+  .search-practice-btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:8px 12px;border-radius:8px;border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:opacity .15s;margin-bottom:6px}
+  .search-practice-btn:hover{opacity:.85}
   /* BOOKMARK */
   .bookmark-btn{background:transparent;border:none;cursor:pointer;font-size:20px;padding:4px;transition:transform .15s;color:var(--text3);font-family:inherit}
   .bookmark-btn:hover{transform:scale(1.15)}
@@ -1511,19 +1513,35 @@ function renderSearch(){
   for(var i=0;i<ALL_QUESTIONS.length;i++){
     var q=ALL_QUESTIONS[i]; var hay=q.question;
     for(var k in q.options) hay+=' '+q.options[k];
-    if(hay.indexOf(kw)>=0){ hits.push({i:i,q:q}); if(hits.length>=30) break; }
+    if(hay.indexOf(kw)>=0) hits.push({i:i,q:q});
   }
   if(!hits.length){box.innerHTML='<div class="search-empty">無符合題目</div>';return;}
-  var html=''; var esc2=function(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};
+  var total=hits.length;
+  var esc2=function(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};
   var hl=function(t){return esc2(t).split(esc2(kw)).join('<mark>'+esc2(kw)+'</mark>');};
-  hits.forEach(function(h){
+  var html='<button class="search-practice-btn" onclick="startSearchPractice()">&#9654; 練習全部 '+total+' 題</button>';
+  hits.slice(0,30).forEach(function(h){
     html+='<div class="search-item" onclick="viewQuestion('+h.i+')">'
       +'<div class="search-item-meta">民國 '+h.q.year+' ｜ '+(h.q.type==='life'?'人身':'財產')+'</div>'
       +'<div class="search-item-text">'+hl(h.q.question.slice(0,80))+(h.q.question.length>80?'…':'')+'</div>'
       +'</div>';
   });
-  if(hits.length>=30) html+='<div class="search-empty">顯示前 30 筆，請縮小關鍵字</div>';
+  if(total>30) html+='<div class="search-empty">顯示前 30 筆，共 '+total+' 題</div>';
   box.innerHTML=html;
+}
+function startSearchPractice(){
+  var kw=(document.getElementById('search-input').value||'').trim();
+  if(!kw||kw.length<2) return;
+  var hits=[];
+  for(var i=0;i<ALL_QUESTIONS.length;i++){
+    var q=ALL_QUESTIONS[i]; var hay=q.question;
+    for(var k in q.options) hay+=' '+q.options[k];
+    if(hay.indexOf(kw)>=0) hits.push({q:q,idx:i});
+  }
+  if(!hits.length) return;
+  isReviewMode=false;
+  session=shuffle(hits);
+  initSession();
 }
 
 // ─── Keyboard shortcuts ──────────────────────────────────────────────
