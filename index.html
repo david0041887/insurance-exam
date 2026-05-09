@@ -821,6 +821,29 @@ var selectedTypes={property:true,life:true};
 var selectedSections={};
 var selectedYears={};
 var selectedTopic=null;
+function calcMatcher(q){
+  var opts=[];for(var _k in q.options) opts.push(q.options[_k]);
+  var numOpts=0;
+  for(var _i=0;_i<opts.length;_i++){
+    var v=opts[_i].replace(/[,，]/g,'').replace(/\s/g,'');
+    if(/\d{3,}/.test(v)||/\d+萬/.test(v)||/\d{3,}元/.test(v)||/\d+\.\d+%/.test(v)) numOpts++;
+  }
+  if(numOpts<2) return false;
+  var qt=q.question;
+  if(/\d+萬/.test(qt)) return true;
+  if(/0\.\d+/.test(qt)) return true;
+  if(/\d+%/.test(qt)) return true;
+  var nums=qt.match(/\d+/g)||[];
+  for(var _j=0;_j<nums.length;_j++){
+    var n=parseInt(nums[_j]);
+    if(n>120&&n<100000) return true;
+    if(n>=115&&n<=120) return true;
+  }
+  return false;
+}
+var SPECIAL_TOPICS=[
+  {label:'計算題',_allSections:true,_matcher:calcMatcher}
+];
 var questionCount=20;
 var session=[];
 var cur=0;
@@ -889,6 +912,25 @@ function buildYearChips(){
 function buildTopicsUI(){
   var tl=document.getElementById('topic-list');
   tl.innerHTML='';
+  // Special cross-section topics
+  var spHeader=document.createElement('div');
+  spHeader.className='topic-section-header';
+  spHeader.textContent='跨科目精選';
+  tl.appendChild(spHeader);
+  var spWrap=document.createElement('div');
+  spWrap.className='topic-chips';
+  SPECIAL_TOPICS.forEach(function(t){
+    var cnt=0;
+    for(var i=0;i<ALL_QUESTIONS.length;i++){if(t._matcher(ALL_QUESTIONS[i])) cnt++;}
+    t._count=cnt;
+    var chip=document.createElement('div');
+    chip.className='chip topic-chip';
+    chip.innerHTML=t.label+'<span class="topic-count">'+cnt+'</span>';
+    chip.onclick=(function(topic){return function(){setTopic(topic);};})(t);
+    t._el=chip;
+    spWrap.appendChild(chip);
+  });
+  tl.appendChild(spWrap);
   for(var sec in TOPICS){
     (function(sectionName){
       var header=document.createElement('div');
@@ -1039,6 +1081,9 @@ function setMode(m){
 }
 function setTopic(topic){
   selectedTopic=topic;
+  SPECIAL_TOPICS.forEach(function(t){
+    t._el.className='chip topic-chip'+(t===topic?' active':'');
+  });
   for(var sec in TOPICS){
     TOPICS[sec].forEach(function(t){
       t._el.className='chip topic-chip'+(t===topic?' active':'');
@@ -1088,6 +1133,10 @@ function getFiltered(){
     if(!selectedTopic) return out;
     for(var i=0;i<ALL_QUESTIONS.length;i++){
       var q=ALL_QUESTIONS[i];
+      if(selectedTopic._allSections){
+        if(selectedTopic._matcher(q)) out.push({q:q,idx:i});
+        continue;
+      }
       if(q.section!==selectedTopic._section) continue;
       var text=q.question;
       for(var kk in q.options) text+=' '+q.options[kk];
