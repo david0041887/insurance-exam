@@ -872,7 +872,7 @@ function buildSectionChips(){
   sc.innerHTML='';
   SECTIONS.forEach(function(s){
     var d=document.createElement('div');
-    d.className='chip section-chip active';
+    d.className='chip section-chip'+(selectedSections[s]?' active':'');
     d.dataset.section=s;
     // Star info
     var starInfo=getSectionStarSummary(s);
