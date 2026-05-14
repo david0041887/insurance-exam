@@ -1252,6 +1252,9 @@ function formatQuestion(text){
         var pp=source.indexOf(ns,i); if(pp<0) break;
         var pv=pp>0?source[pp-1]:''; var nx=source[pp+ns.length]||'';
         if(pv==='第'||/\d/.test(pv)||/\d/.test(nx)||nx===','||nx==='.'){ i=pp+1; continue; }
+        // skip "N 單位" patterns like "5 年", "2 月" (space + unit word)
+        var UNITS_L='月日年週時分秒萬億千百元';
+        if(nx===' '&&pp+ns.length+1<source.length&&UNITS_L.indexOf(source[pp+ns.length+1])>=0){ i=pp+1; continue; }
         f=pp; break;
       }
       if(f<0) break;
