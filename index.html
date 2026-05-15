@@ -77,8 +77,6 @@
   .search-item-text{font-size:11px;color:var(--text2);line-height:1.5}
   .search-item-text mark{background:rgba(79,110,247,.25);color:var(--accent);padding:0 2px;border-radius:2px;font-weight:600}
   .search-empty{color:var(--text3);font-size:11px;text-align:center;padding:10px}
-  .search-practice-btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:8px 12px;border-radius:8px;border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:opacity .15s;margin-bottom:6px}
-  .search-practice-btn:hover{opacity:.85}
   /* BOOKMARK */
   .bookmark-btn{background:transparent;border:none;cursor:pointer;font-size:20px;padding:4px;transition:transform .15s;color:var(--text3);font-family:inherit}
   .bookmark-btn:hover{transform:scale(1.15)}
@@ -93,12 +91,6 @@
   .note-body{margin-top:8px}
   .note-textarea{width:100%;min-height:80px;max-height:300px;resize:vertical;padding:10px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;font-family:inherit;line-height:1.6;box-sizing:border-box;transition:border-color .15s}
   .note-textarea:focus{border-color:var(--accent);outline:none}
-  .note-imgs-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
-  .note-img-wrap{position:relative}
-  .note-img-thumb{max-width:150px;max-height:110px;border-radius:8px;border:1.5px solid var(--border);cursor:zoom-in;display:block;object-fit:cover}
-  .note-img-del{position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:#ef4444;color:#fff;border:none;cursor:pointer;font-size:14px;line-height:1;font-family:inherit;display:flex;align-items:center;justify-content:center;padding:0}
-  .note-img-add{display:inline-flex;align-items:center;gap:5px;margin-top:8px;padding:6px 12px;border-radius:8px;border:1.5px dashed var(--border);color:var(--text3);cursor:pointer;font-size:12px;transition:all .15s}
-  .note-img-add:hover{border-color:var(--accent);color:var(--accent)}
   /* ESSAY MODE */
   .essay-toggle-btn{background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;padding:7px 14px;border-radius:10px;border:none;cursor:pointer;font-weight:700;font-size:12px;font-family:inherit;box-shadow:0 4px 12px rgba(139,92,246,.35);white-space:nowrap}
   .essay-toggle-btn:hover{transform:translateY(-1px)}
@@ -436,9 +428,7 @@
       <div id="note-section">
         <button class="note-toggle-btn" id="note-toggle-btn" onclick="toggleNote()">&#128221; 新增筆記</button>
         <div id="note-body" class="note-body" style="display:none">
-          <textarea class="note-textarea" id="note-ta" placeholder="記錄重點、解題思路或相關法條..." oninput="debounceSaveNote()" onblur="saveNoteNow()" onpaste="handleNotePaste(event)"></textarea>
-          <div id="note-imgs" class="note-imgs-grid"></div>
-          <label class="note-img-add">&#128247; 上傳照片<input type="file" accept="image/*" multiple onchange="addNoteImgFromFile(event)" style="display:none"></label>
+          <textarea class="note-textarea" id="note-ta" placeholder="記錄重點、解題思路或相關法條..." oninput="debounceSaveNote()" onblur="saveNoteNow()"></textarea>
         </div>
       </div>
       </div>
@@ -532,86 +522,8 @@ var LS_ESSAY_DRAFTS = 'ins_essay_drafts_v1';  // {qid: text}
 var LS_ESSAY_RESULTS = 'ins_essay_results_v1'; // {qid: result}
 var LS_NOTES        = 'ins_notes_v1';
 
-// ─── IndexedDB for note images (no localStorage size limit) ──────────
-var _imgDB=null;
-function openImgDB(){
-  if(_imgDB) return Promise.resolve(_imgDB);
-  return new Promise(function(resolve,reject){
-    var req=indexedDB.open('ins_note_imgs_db',1);
-    req.onupgradeneeded=function(e){ e.target.result.createObjectStore('imgs',{keyPath:'idx'}); };
-    req.onsuccess=function(e){ _imgDB=e.target.result; resolve(_imgDB); };
-    req.onerror=function(){ reject(req.error); };
-  });
-}
-function getNoteImgs(idx){
-  return openImgDB().then(function(db){
-    return new Promise(function(resolve){
-      var tx=db.transaction('imgs','readonly');
-      var req=tx.objectStore('imgs').get(idx);
-      req.onsuccess=function(){ resolve(req.result?req.result.data:[]); };
-      req.onerror=function(){ resolve([]); };
-    });
-  }).catch(function(){ return []; });
-}
-function saveNoteImgsDB(idx,imgs){
-  return openImgDB().then(function(db){
-    return new Promise(function(resolve){
-      var tx=db.transaction('imgs','readwrite');
-      var store=tx.objectStore('imgs');
-      if(imgs&&imgs.length){ store.put({idx:idx,data:imgs}); } else{ store.delete(idx); }
-      tx.oncomplete=resolve; tx.onerror=resolve;
-    });
-  }).catch(function(){});
-}
-function getAllNoteImgsFromDB(){
-  return openImgDB().then(function(db){
-    return new Promise(function(resolve){
-      var tx=db.transaction('imgs','readonly');
-      var req=tx.objectStore('imgs').getAll();
-      req.onsuccess=function(){
-        var r={}; (req.result||[]).forEach(function(e){ r[e.idx]=e.data; }); resolve(r);
-      };
-      req.onerror=function(){ resolve({}); };
-    });
-  }).catch(function(){ return {}; });
-}
-function clearAllNoteImgsDB(){
-  return openImgDB().then(function(db){
-    return new Promise(function(resolve){
-      var tx=db.transaction('imgs','readwrite');
-      tx.objectStore('imgs').clear();
-      tx.oncomplete=resolve; tx.onerror=resolve;
-    });
-  }).catch(function(){});
-}
-function migrateNoteImgs(){
-  var old=localStorage.getItem('ins_note_imgs_v1'); if(!old) return;
-  try{
-    var d=JSON.parse(old);
-    openImgDB().then(function(db){
-      var tx=db.transaction('imgs','readwrite'); var store=tx.objectStore('imgs');
-      Object.keys(d).forEach(function(k){ if(d[k]&&d[k].length) store.put({idx:parseInt(k),data:d[k]}); });
-      tx.oncomplete=function(){ localStorage.removeItem('ins_note_imgs_v1'); };
-    });
-  }catch(e){}
-}
-
 function loadD(key){ try{ return JSON.parse(localStorage.getItem(key)||'{}'); }catch(e){ return {}; } }
-function saveD(key,d){
-  try{ localStorage.setItem(key,JSON.stringify(d)); }
-  catch(e){
-    if(e.name==='QuotaExceededError'||e.code===22||e.code===1014){
-      if(!document.getElementById('storage-warn-toast')){
-        var t=document.createElement('div');
-        t.id='storage-warn-toast'; t.className='update-toast';
-        t.style.cssText='background:linear-gradient(135deg,#7c3aed,#ef4444)';
-        t.innerHTML='⚠️ 儲存空間不足，部分資料未能存入。建議先匯出備份。'
-          +'<button onclick="this.parentNode.remove()" style="margin-left:10px;background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-family:inherit">✕</button>';
-        document.body.appendChild(t);
-      }
-    }
-  }
-}
+function saveD(key,d){ try{ localStorage.setItem(key,JSON.stringify(d)); }catch(e){} }
 
 // ─── Wrong Pool ──────────────────────────────────────────────────────
 function getWrongPool(){ return loadD(LS_WRONG); }
@@ -821,29 +733,6 @@ var selectedTypes={property:true,life:true};
 var selectedSections={};
 var selectedYears={};
 var selectedTopic=null;
-function calcMatcher(q){
-  var opts=[];for(var _k in q.options) opts.push(q.options[_k]);
-  var numOpts=0;
-  for(var _i=0;_i<opts.length;_i++){
-    var v=opts[_i].replace(/[,，]/g,'').replace(/\s/g,'');
-    if(/\d{3,}/.test(v)||/\d+萬/.test(v)||/\d{3,}元/.test(v)||/\d+\.\d+%/.test(v)) numOpts++;
-  }
-  if(numOpts<2) return false;
-  var qt=q.question;
-  if(/\d+萬/.test(qt)) return true;
-  if(/0\.\d+/.test(qt)) return true;
-  if(/\d+%/.test(qt)) return true;
-  var nums=qt.match(/\d+/g)||[];
-  for(var _j=0;_j<nums.length;_j++){
-    var n=parseInt(nums[_j]);
-    if(n>120&&n<100000) return true;
-    if(n>=115&&n<=120) return true;
-  }
-  return false;
-}
-var SPECIAL_TOPICS=[
-  {label:'計算題',_allSections:true,_matcher:calcMatcher}
-];
 var questionCount=20;
 var session=[];
 var cur=0;
@@ -872,7 +761,7 @@ function buildSectionChips(){
   sc.innerHTML='';
   SECTIONS.forEach(function(s){
     var d=document.createElement('div');
-    d.className='chip section-chip'+(selectedSections[s]?' active':'');
+    d.className='chip section-chip active';
     d.dataset.section=s;
     // Star info
     var starInfo=getSectionStarSummary(s);
@@ -912,25 +801,6 @@ function buildYearChips(){
 function buildTopicsUI(){
   var tl=document.getElementById('topic-list');
   tl.innerHTML='';
-  // Special cross-section topics
-  var spHeader=document.createElement('div');
-  spHeader.className='topic-section-header';
-  spHeader.textContent='跨科目精選';
-  tl.appendChild(spHeader);
-  var spWrap=document.createElement('div');
-  spWrap.className='topic-chips';
-  SPECIAL_TOPICS.forEach(function(t){
-    var cnt=0;
-    for(var i=0;i<ALL_QUESTIONS.length;i++){if(t._matcher(ALL_QUESTIONS[i])) cnt++;}
-    t._count=cnt;
-    var chip=document.createElement('div');
-    chip.className='chip topic-chip';
-    chip.innerHTML=t.label+'<span class="topic-count">'+cnt+'</span>';
-    chip.onclick=(function(topic){return function(){setTopic(topic);};})(t);
-    t._el=chip;
-    spWrap.appendChild(chip);
-  });
-  tl.appendChild(spWrap);
   for(var sec in TOPICS){
     (function(sectionName){
       var header=document.createElement('div');
@@ -965,7 +835,7 @@ function buildTopicsUI(){
 }
 
 // ─── Data loading & boot ─────────────────────────────────────────────
-var DATA_VERSION='3';  // bump when questions.json content changes
+var DATA_VERSION='4';  // bump when questions.json content changes
 var DATA_CACHE_KEY='ins_data_v'+DATA_VERSION;
 function loadData(){
   // Purge old cache versions
@@ -1081,9 +951,6 @@ function setMode(m){
 }
 function setTopic(topic){
   selectedTopic=topic;
-  SPECIAL_TOPICS.forEach(function(t){
-    t._el.className='chip topic-chip'+(t===topic?' active':'');
-  });
   for(var sec in TOPICS){
     TOPICS[sec].forEach(function(t){
       t._el.className='chip topic-chip'+(t===topic?' active':'');
@@ -1133,10 +1000,6 @@ function getFiltered(){
     if(!selectedTopic) return out;
     for(var i=0;i<ALL_QUESTIONS.length;i++){
       var q=ALL_QUESTIONS[i];
-      if(selectedTopic._allSections){
-        if(selectedTopic._matcher(q)) out.push({q:q,idx:i});
-        continue;
-      }
       if(q.section!==selectedTopic._section) continue;
       var text=q.question;
       for(var kk in q.options) text+=' '+q.options[kk];
@@ -1252,9 +1115,6 @@ function formatQuestion(text){
         var pp=source.indexOf(ns,i); if(pp<0) break;
         var pv=pp>0?source[pp-1]:''; var nx=source[pp+ns.length]||'';
         if(pv==='第'||/\d/.test(pv)||/\d/.test(nx)||nx===','||nx==='.'){ i=pp+1; continue; }
-        // skip "N 單位" patterns like "5 年", "2 月" (space + unit word)
-        var UNITS_L='月日年週時分秒萬億千百元';
-        if(nx===' '&&pp+ns.length+1<source.length&&UNITS_L.indexOf(source[pp+ns.length+1])>=0){ i=pp+1; continue; }
         f=pp; break;
       }
       if(f<0) break;
@@ -1270,12 +1130,8 @@ function formatQuestion(text){
       while(i<=source.length-ns.length){
         var pp=source.indexOf(ns,i); if(pp<0) break;
         var pv=pp>0?source[pp-1]:''; var nx=source[pp+ns.length]||'';
-        // allow single space between digit and CJK (handles "4 重要人物" style)
-        var checkNx=(nx===' '&&pp+ns.length+1<source.length)?source[pp+ns.length+1]:nx;
-        var UNITS='月日年週時分秒萬億千百元';
-        if(!/[\u4e00-\u9fff]/.test(checkNx)||UNITS.indexOf(checkNx)>=0||
-           pv==='第'||/\d/.test(pv)){i=pp+1;continue;}
-        f=pp;break;
+        if(!/[\u4e00-\u9fff]/.test(nx)||pv==='第'||/\d/.test(pv)){ i=pp+1; continue; }
+        f=pp; break;
       }
       if(f<0) break;
       p.push({num:n,pos:f}); from=f+ns.length; n++;
@@ -1301,11 +1157,7 @@ function formatQuestion(text){
   }
 
   var qIdx=-1;
-  for(var i=text.length-1;i>=0;i--){
-    if(text[i]==='?'||text[i]==='？'){qIdx=i;break;}
-    // colon followed by digit also signals start of numbered list
-    if((text[i]===':'||text[i]==='：')&&/\d/.test(text[i+1]||'')){qIdx=i;break;}
-  }
+  for(var i=text.length-1;i>=0;i--){if(text[i]==='?'||text[i]==='？'){qIdx=i;break;}}
 
   // Try 1: items after the last ? (standard format)
   if(qIdx>=0){
@@ -1366,86 +1218,18 @@ function saveNoteText(idx,text){ var d=loadD(LS_NOTES); if(text) d[idx]=text; el
 function hasNote(idx){ return !!getNoteText(idx); }
 var _noteDebounce=null;
 function debounceSaveNote(){ clearTimeout(_noteDebounce); _noteDebounce=setTimeout(saveNoteNow,600); }
-
-// getNoteImgs / saveNoteImgs now backed by IndexedDB (see openImgDB above)
-
-function compressImage(file,cb){
-  var reader=new FileReader();
-  reader.onload=function(e){
-    var img=new Image();
-    img.onload=function(){
-      var MAX=900; var w=img.width; var h=img.height;
-      if(w>MAX||h>MAX){ if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;} }
-      var c=document.createElement('canvas'); c.width=w; c.height=h;
-      c.getContext('2d').drawImage(img,0,0,w,h);
-      cb(c.toDataURL('image/jpeg',0.75));
-    };
-    img.src=e.target.result;
-  };
-  reader.readAsDataURL(file);
-}
-
-function addNoteImgData(idx,dataUrl){
-  getNoteImgs(idx).then(function(imgs){
-    imgs.push(dataUrl);
-    saveNoteImgsDB(idx,imgs).then(function(){ renderNoteImgs(idx); updateNoteBtn(idx); });
-  });
-}
-
-function addNoteImgFromFile(e){
-  if(!session[cur]) return;
-  var idx=session[cur].idx;
-  Array.from(e.target.files).forEach(function(f){ compressImage(f,function(d){ addNoteImgData(idx,d); }); });
-  e.target.value='';
-}
-
-function handleNotePaste(e){
-  if(!session[cur]) return;
-  var idx=session[cur].idx;
-  var items=(e.clipboardData||e.originalEvent&&e.originalEvent.clipboardData||{}).items||[];
-  for(var i=0;i<items.length;i++){
-    if(items[i].type.indexOf('image')===0){
-      e.preventDefault();
-      compressImage(items[i].getAsFile(),function(d){ addNoteImgData(idx,d); });
-    }
-  }
-}
-
-function removeNoteImg(idx,i){
-  getNoteImgs(idx).then(function(imgs){
-    imgs.splice(i,1);
-    saveNoteImgsDB(idx,imgs).then(function(){ renderNoteImgs(idx); updateNoteBtn(idx); });
-  });
-}
-
-function renderNoteImgs(idx){
-  getNoteImgs(idx).then(function(imgs){
-    var el=document.getElementById('note-imgs'); if(!el) return;
-    el.innerHTML=imgs.map(function(src,i){
-      return '<div class="note-img-wrap"><img class="note-img-thumb" src="'+src+'" onclick="window.open(this.src)">'
-        +'<button class="note-img-del" onclick="removeNoteImg('+idx+','+i+')">×</button></div>';
-    }).join('');
-  });
-}
-
-function updateNoteBtn(idx){
-  getNoteImgs(idx).then(function(imgs){
-    var btn=document.getElementById('note-toggle-btn'); if(!btn) return;
-    var has=!!getNoteText(idx)||imgs.length>0;
-    btn.className='note-toggle-btn'+(has?' has-note':'');
-    var body=document.getElementById('note-body');
-    var open=body&&body.style.display!=='none';
-    btn.innerHTML=open?'&#128316; 收起筆記':(has?'&#128221; 筆記':'&#128221; 新增筆記');
-  });
-}
-
 function saveNoteNow(){
   clearTimeout(_noteDebounce);
   var ta=document.getElementById('note-ta');
   if(!ta||!session[cur]) return;
   var idx=session[cur].idx;
   saveNoteText(idx,ta.value.trim());
-  updateNoteBtn(idx);
+  var btn=document.getElementById('note-toggle-btn');
+  if(btn){
+    var has=!!ta.value.trim();
+    btn.className='note-toggle-btn'+(has?' has-note':'');
+    btn.innerHTML=has?'&#128221; 筆記':'&#128221; 新增筆記';
+  }
 }
 function toggleNote(){
   saveNoteNow();
@@ -1454,7 +1238,11 @@ function toggleNote(){
   var open=body.style.display!=='none';
   body.style.display=open?'none':'block';
   if(!open){ var ta=document.getElementById('note-ta'); if(ta) ta.focus(); }
-  if(session[cur]) updateNoteBtn(session[cur].idx);
+  var btn=document.getElementById('note-toggle-btn');
+  if(btn){
+    var has=session[cur]&&hasNote(session[cur].idx);
+    btn.innerHTML=open?(has?'&#128221; 筆記':'&#128221; 新增筆記'):'&#128316; 收起筆記';
+  }
 }
 
 function renderQuestion(){
@@ -1508,12 +1296,13 @@ function renderQuestion(){
     optEl.appendChild(div);
   });
   // Notes – reset panel on each question
+  var _noteText=getNoteText(idx);
+  var _noteBtn=document.getElementById('note-toggle-btn');
+  if(_noteBtn){ _noteBtn.className='note-toggle-btn'+(_noteText?' has-note':''); _noteBtn.innerHTML=_noteText?'&#128221; 筆記':'&#128221; 新增筆記'; }
   var _noteBody=document.getElementById('note-body');
   if(_noteBody) _noteBody.style.display='none';
   var _noteTa=document.getElementById('note-ta');
-  if(_noteTa) _noteTa.value=getNoteText(idx);
-  renderNoteImgs(idx);
-  updateNoteBtn(idx);
+  if(_noteTa) _noteTa.value=_noteText;
   document.getElementById('btn-prev').disabled=cur===0;
   document.getElementById('btn-next').innerHTML=cur===session.length-1?'完成 ✓':'下一題 →';
 }
@@ -1565,35 +1354,19 @@ function renderSearch(){
   for(var i=0;i<ALL_QUESTIONS.length;i++){
     var q=ALL_QUESTIONS[i]; var hay=q.question;
     for(var k in q.options) hay+=' '+q.options[k];
-    if(hay.indexOf(kw)>=0) hits.push({i:i,q:q});
+    if(hay.indexOf(kw)>=0){ hits.push({i:i,q:q}); if(hits.length>=30) break; }
   }
   if(!hits.length){box.innerHTML='<div class="search-empty">無符合題目</div>';return;}
-  var total=hits.length;
-  var esc2=function(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};
+  var html=''; var esc2=function(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};
   var hl=function(t){return esc2(t).split(esc2(kw)).join('<mark>'+esc2(kw)+'</mark>');};
-  var html='<button class="search-practice-btn" onclick="startSearchPractice()">&#9654; 練習全部 '+total+' 題</button>';
-  hits.slice(0,30).forEach(function(h){
+  hits.forEach(function(h){
     html+='<div class="search-item" onclick="viewQuestion('+h.i+')">'
       +'<div class="search-item-meta">民國 '+h.q.year+' ｜ '+(h.q.type==='life'?'人身':'財產')+'</div>'
       +'<div class="search-item-text">'+hl(h.q.question.slice(0,80))+(h.q.question.length>80?'…':'')+'</div>'
       +'</div>';
   });
-  if(total>30) html+='<div class="search-empty">顯示前 30 筆，共 '+total+' 題</div>';
+  if(hits.length>=30) html+='<div class="search-empty">顯示前 30 筆，請縮小關鍵字</div>';
   box.innerHTML=html;
-}
-function startSearchPractice(){
-  var kw=(document.getElementById('search-input').value||'').trim();
-  if(!kw||kw.length<2) return;
-  var hits=[];
-  for(var i=0;i<ALL_QUESTIONS.length;i++){
-    var q=ALL_QUESTIONS[i]; var hay=q.question;
-    for(var k in q.options) hay+=' '+q.options[k];
-    if(hay.indexOf(kw)>=0) hits.push({q:q,idx:i});
-  }
-  if(!hits.length) return;
-  isReviewMode=false;
-  session=shuffle(hits);
-  initSession();
 }
 
 // ─── Keyboard shortcuts ──────────────────────────────────────────────
@@ -1829,19 +1602,13 @@ function hideStatsModal(){ document.getElementById('stats-modal').className='mod
 
 // ─── Export / Import ─────────────────────────────────────────────────
 function exportData(){
-  getAllNoteImgsFromDB().then(function(noteImgs){
-    var data={
-      wrong:loadD(LS_WRONG),stars:loadD(LS_STARS),bookmarks:getBookmarks(),
-      stats:loadD(LS_STATS),notes:loadD(LS_NOTES),noteImgs:noteImgs,
-      theme:localStorage.getItem(LS_THEME)||'dark',exportedAt:new Date().toISOString()
-    };
-    var blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
-    var url=URL.createObjectURL(blob);
-    var a=document.createElement('a');
-    a.href=url; a.download='insurance-exam-progress-'+todayKey()+'.json';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  });
+  var data={wrong:loadD(LS_WRONG),stars:loadD(LS_STARS),bookmarks:getBookmarks(),stats:loadD(LS_STATS),theme:localStorage.getItem(LS_THEME)||'dark',exportedAt:new Date().toISOString()};
+  var blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url; a.download='insurance-exam-progress-'+todayKey()+'.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 function importData(ev){
   var f=ev.target.files&&ev.target.files[0]; if(!f) return;
@@ -1854,19 +1621,9 @@ function importData(ev){
       if(d.stars) saveD(LS_STARS,d.stars);
       if(d.bookmarks) saveD(LS_BOOKMARKS,d.bookmarks);
       if(d.stats) saveD(LS_STATS,d.stats);
-      if(d.notes) saveD(LS_NOTES,d.notes);
       if(d.theme) localStorage.setItem(LS_THEME,d.theme);
-      if(d.noteImgs&&Object.keys(d.noteImgs).length){
-        openImgDB().then(function(db){
-          var tx=db.transaction('imgs','readwrite'); var store=tx.objectStore('imgs');
-          store.clear();
-          Object.keys(d.noteImgs).forEach(function(k){
-            if(d.noteImgs[k]&&d.noteImgs[k].length) store.put({idx:parseInt(k),data:d.noteImgs[k]});
-          });
-        });
-      }
       applyTheme(); updateSidePanels();
-      alert('匯入完成（包含筆記與圖片）');
+      alert('匯入完成');
     }catch(err){ alert('匯入失敗：'+err.message); }
   };
   rd.readAsText(f);
@@ -1886,7 +1643,6 @@ function toggleTheme(){
   applyTheme();
 }
 applyTheme();
-migrateNoteImgs();
 
 // ─── PWA install prompt ──────────────────────────────────────────────
 var deferredPrompt=null;
