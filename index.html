@@ -781,7 +781,7 @@ function buildSectionChips(){
   sc.innerHTML='';
   SECTIONS.forEach(function(s){
     var d=document.createElement('div');
-    d.className='chip section-chip active';
+    d.className='chip section-chip'+(selectedSections[s]?' active':'');
     d.dataset.section=s;
     // Star info
     var starInfo=getSectionStarSummary(s);
@@ -812,7 +812,7 @@ function buildYearChips(){
   yc.innerHTML='';
   YEARS.forEach(function(y){
     var d=document.createElement('div');
-    d.className='chip year-chip active';
+    d.className='chip year-chip'+(selectedYears[y]?' active':'');
     d.dataset.year=y; d.textContent=y;
     d.onclick=(function(el){return function(){toggleYear(el);};})(d);
     yc.appendChild(d);
