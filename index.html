@@ -168,6 +168,8 @@
   .topic-chip.active .topic-count{background:rgba(255,255,255,.25);color:#fff}
   .start-btn{width:100%;padding:11px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:10px;color:#fff;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;transition:all .2s;box-shadow:0 4px 16px rgba(79,110,247,.3);margin-top:2px}
   .start-btn:hover{transform:translateY(-1px)}
+  .start-btn:disabled,.start-btn.disabled{background:var(--surface2);color:var(--text3);box-shadow:none;cursor:not-allowed;opacity:.55}
+  .start-btn:disabled:hover,.start-btn.disabled:hover{transform:none}
   .review-btn{width:100%;padding:11px;background:linear-gradient(135deg,#dc2626,#991b1b);border:none;border-radius:10px;color:#fff;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;transition:all .2s;box-shadow:0 4px 16px rgba(220,38,38,.3);margin-top:6px}
   .review-btn:hover{transform:translateY(-1px)}
   .review-btn:disabled{opacity:.35;cursor:not-allowed;transform:none}
@@ -324,8 +326,8 @@
       <div class="filter-group" id="type-group">
         <span class="filter-label">適用類別</span>
         <div class="filter-chips">
-          <div class="chip prop-chip active" data-type="property" onclick="toggleType(this)">&#127970; 財產</div>
-          <div class="chip life-chip active" data-type="life" onclick="toggleType(this)">&#129516; 人身</div>
+          <div class="chip prop-chip" data-type="property" onclick="toggleType(this)">&#127970; 財產</div>
+          <div class="chip life-chip" data-type="life" onclick="toggleType(this)">&#129516; 人身</div>
         </div>
       </div>
       <div class="filter-group" id="section-group">
@@ -345,7 +347,7 @@
           <div class="chip" data-count="0" onclick="setCount(this)">全部</div>
         </div>
       </div>
-      <button class="start-btn" onclick="startSession()">&#9654; 開始練習</button>
+      <button class="start-btn" id="start-btn" onclick="startSession()">&#9654; 開始練習</button>
       <button class="review-btn" id="review-btn" onclick="startReview()">&#128293; 錯題總複習</button>
       <button class="review-btn" id="bookmark-review-btn" onclick="startBookmarksReview()" style="background:linear-gradient(135deg,#f59e0b,#b45309);box-shadow:0 4px 16px rgba(245,158,11,.3);margin-top:6px">&#11088; 我的收藏</button>
       <div class="count-display" id="count-display">符合條件：<strong>0</strong> 題</div>
@@ -730,7 +732,7 @@ var TOPICS={
 // ─── State ──────────────────────────────────────────────────────────
 var mode='random';
 var isReviewMode=false;
-var selectedTypes={property:true,life:true};
+var selectedTypes={property:false,life:false};
 var selectedSections={};
 var selectedYears={};
 var selectedTopic=null;
@@ -754,8 +756,8 @@ function deriveSectionsYears(){
     if(q.year&&!ym[q.year]){ym[q.year]=1;YEARS.push(q.year);}
   }
   SECTIONS.sort(); YEARS.sort(function(a,b){return a-b;});
-  for(var j=0;j<SECTIONS.length;j++) selectedSections[SECTIONS[j]]=true;
-  for(var k=0;k<YEARS.length;k++) selectedYears[YEARS[k]]=true;
+  for(var j=0;j<SECTIONS.length;j++) selectedSections[SECTIONS[j]]=false;
+  for(var k=0;k<YEARS.length;k++) selectedYears[YEARS[k]]=false;
 }
 function sectionAvailable(s){
   var types=SECTION_TYPES[s]||{};
@@ -765,7 +767,7 @@ function sectionAvailable(s){
 function syncSectionsToTypes(){
   for(var i=0;i<SECTIONS.length;i++){
     var s=SECTIONS[i];
-    selectedSections[s]=sectionAvailable(s);
+    if(!sectionAvailable(s)) selectedSections[s]=false;
   }
   var chips=document.querySelectorAll('.section-chip');
   for(var j=0;j<chips.length;j++){
@@ -981,8 +983,6 @@ function setTopic(topic){
 }
 function toggleType(el){
   var t=el.dataset.type;
-  var c=0; for(var k in selectedTypes){if(selectedTypes[k])c++;}
-  if(selectedTypes[t]&&c===1) return;
   selectedTypes[t]=!selectedTypes[t];
   el.className='chip '+(t==='life'?'life-chip':'prop-chip')+(selectedTypes[t]?' active':'');
   syncSectionsToTypes();
@@ -991,14 +991,6 @@ function toggleType(el){
 function toggleSection(el){
   var s=el.dataset.section;
   if(!sectionAvailable(s)) return;
-  var avail=0,picked=0;
-  for(var i=0;i<SECTIONS.length;i++){
-    if(sectionAvailable(SECTIONS[i])){
-      avail++;
-      if(selectedSections[SECTIONS[i]]) picked++;
-    }
-  }
-  if(selectedSections[s]&&picked===1) return;
   selectedSections[s]=!selectedSections[s];
   var chips=document.querySelectorAll('.section-chip');
   for(var j=0;j<chips.length;j++){
@@ -1010,8 +1002,6 @@ function toggleSection(el){
 }
 function toggleYear(el){
   var y=parseInt(el.dataset.year);
-  var c=0; for(var k in selectedYears){if(selectedYears[k])c++;}
-  if(selectedYears[y]&&c===1) return;
   selectedYears[y]=!selectedYears[y];
   el.className='chip year-chip'+(selectedYears[y]?' active':'');
   updateCountDisplay();
@@ -1055,6 +1045,25 @@ function updateCountDisplay(){
   if(mode==='topic'&&!selectedTopic) prefix='請先選一個主題';
   else if(mode==='topic') prefix='主題「'+selectedTopic.label+'」';
   document.getElementById('count-display').innerHTML=prefix+'：<strong>'+n.toLocaleString()+'</strong> 題　本次出 <strong>'+show+'</strong> 題';
+  updateStartBtnState();
+}
+function updateStartBtnState(){
+  var btn=document.getElementById('start-btn');
+  if(!btn) return;
+  var ok;
+  if(mode==='topic'){
+    ok=!!selectedTopic;
+  } else {
+    var anyType=false; for(var t in selectedTypes){ if(selectedTypes[t]){anyType=true;break;} }
+    var anySec=false;  for(var s in selectedSections){ if(selectedSections[s]){anySec=true;break;} }
+    ok=anyType&&anySec;
+    if(mode==='year'){
+      var anyYr=false; for(var y in selectedYears){ if(selectedYears[y]){anyYr=true;break;} }
+      ok=ok&&anyYr;
+    }
+  }
+  btn.disabled=!ok;
+  btn.className='start-btn'+(ok?'':' disabled');
 }
 
 // ─── Session ─────────────────────────────────────────────────────────
