@@ -63,6 +63,7 @@
   .chip.life-chip.active{border-color:var(--life);color:var(--life);background:rgba(245,158,11,.1)}
   .chip.prop-chip.active{border-color:var(--property);color:var(--property);background:rgba(6,182,212,.1)}
   .section-chip{width:100%;padding:7px 9px;border-radius:8px;font-size:11px;text-align:left;margin-bottom:3px;display:flex;align-items:center;justify-content:space-between;gap:6px}
+  .chip.disabled{opacity:.35;cursor:not-allowed;pointer-events:none;background:var(--bg);color:var(--text3);border-color:var(--border)}
   .section-chip-label{flex:1}
   .section-star-info{font-size:10px;color:var(--text3);display:flex;gap:4px;align-items:center;flex-shrink:0}
   .year-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
@@ -741,18 +742,37 @@ var sessionCorrect=0;
 var sessionWrong=0;
 var sessionWrongItems=[];
 
-var SECTIONS=[]; var YEARS=[];
+var SECTIONS=[]; var YEARS=[]; var SECTION_TYPES={};
 function deriveSectionsYears(){
-  SECTIONS=[]; YEARS=[];
+  SECTIONS=[]; YEARS=[]; SECTION_TYPES={};
   var sm={},ym={};
   for(var i=0;i<ALL_QUESTIONS.length;i++){
     var q=ALL_QUESTIONS[i];
     if(!sm[q.section]){sm[q.section]=1;SECTIONS.push(q.section);}
+    if(!SECTION_TYPES[q.section]) SECTION_TYPES[q.section]={};
+    if(q.type) SECTION_TYPES[q.section][q.type]=true;
     if(q.year&&!ym[q.year]){ym[q.year]=1;YEARS.push(q.year);}
   }
   SECTIONS.sort(); YEARS.sort(function(a,b){return a-b;});
   for(var j=0;j<SECTIONS.length;j++) selectedSections[SECTIONS[j]]=true;
   for(var k=0;k<YEARS.length;k++) selectedYears[YEARS[k]]=true;
+}
+function sectionAvailable(s){
+  var types=SECTION_TYPES[s]||{};
+  for(var t in types){ if(selectedTypes[t]) return true; }
+  return false;
+}
+function syncSectionsToTypes(){
+  for(var i=0;i<SECTIONS.length;i++){
+    var s=SECTIONS[i];
+    selectedSections[s]=sectionAvailable(s);
+  }
+  var chips=document.querySelectorAll('.section-chip');
+  for(var j=0;j<chips.length;j++){
+    var sec=chips[j].dataset.section;
+    var ok=sectionAvailable(sec);
+    chips[j].className='chip section-chip'+(ok&&selectedSections[sec]?' active':'')+(ok?'':' disabled');
+  }
 }
 
 // ─── Build Section Chips with star info ──────────────────────────────
@@ -770,6 +790,7 @@ function buildSectionChips(){
     d.onclick=(function(el){return function(){toggleSection(el);};})(d);
     sc.appendChild(d);
   });
+  syncSectionsToTypes();
 }
 function getSectionStarSummary(section){
   var counts=[0,0,0,0]; // 0,1,2,3 stars
@@ -964,18 +985,25 @@ function toggleType(el){
   if(selectedTypes[t]&&c===1) return;
   selectedTypes[t]=!selectedTypes[t];
   el.className='chip '+(t==='life'?'life-chip':'prop-chip')+(selectedTypes[t]?' active':'');
+  syncSectionsToTypes();
   updateCountDisplay();
 }
 function toggleSection(el){
   var s=el.dataset.section;
-  var c=0; for(var k in selectedSections){if(selectedSections[k])c++;}
-  if(selectedSections[s]&&c===1) return;
+  if(!sectionAvailable(s)) return;
+  var avail=0,picked=0;
+  for(var i=0;i<SECTIONS.length;i++){
+    if(sectionAvailable(SECTIONS[i])){
+      avail++;
+      if(selectedSections[SECTIONS[i]]) picked++;
+    }
+  }
+  if(selectedSections[s]&&picked===1) return;
   selectedSections[s]=!selectedSections[s];
-  // rebuild to keep star info
   var chips=document.querySelectorAll('.section-chip');
-  for(var i=0;i<chips.length;i++){
-    if(chips[i].dataset.section===s){
-      chips[i].className='chip section-chip'+(selectedSections[s]?' active':'');
+  for(var j=0;j<chips.length;j++){
+    if(chips[j].dataset.section===s){
+      chips[j].className='chip section-chip'+(selectedSections[s]?' active':'');
     }
   }
   updateCountDisplay();
