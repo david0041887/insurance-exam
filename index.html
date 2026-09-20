@@ -656,7 +656,7 @@ function getStreakDays(){
 
 // ─── Topic definitions (curated from frequency analysis) ─────────────
 var TOPICS={
-  '保險經紀人保險法規概要':[
+  '保險法規概要':[
     {label:'保險契約效力',keywords:['保險契約','契約無效','契約撤銷','契約解除','契約終止']},
     {label:'保險法基礎',keywords:['保險法第','依保險法']},
     {label:'業務員管理',keywords:['業務員','招攬']},
@@ -703,6 +703,30 @@ var TOPICS={
     {label:'逆選擇與道德危險',keywords:['逆選擇','道德危險']},
     {label:'團體保險',keywords:['團體保險']},
     {label:'投資型保險',keywords:['投資型']}
+  ],
+  '財產保險行銷概要':[
+    {label:'業務員招攬',keywords:['業務員','招攬']},
+    {label:'保險經紀人/代理人',keywords:['保險經紀人','保險代理人']},
+    {label:'理賠實務',keywords:['理賠']},
+    {label:'核保',keywords:['核保']},
+    {label:'佣金與報酬',keywords:['佣金','手續費']},
+    {label:'汽車保險',keywords:['汽車保險','強制汽車','強制險']},
+    {label:'火災保險',keywords:['火災保險']},
+    {label:'責任保險',keywords:['責任保險']},
+    {label:'保險費',keywords:['保險費']},
+    {label:'契約撤銷/終止',keywords:['撤銷','解除','終止']}
+  ],
+  '人身保險行銷概要':[
+    {label:'業務員招攬',keywords:['業務員','招攬']},
+    {label:'人壽保險銷售',keywords:['人壽保險','定期壽險','終身壽險']},
+    {label:'保險經紀人/代理人',keywords:['保險經紀人','保險代理人']},
+    {label:'理賠實務',keywords:['理賠']},
+    {label:'健康保險',keywords:['健康保險']},
+    {label:'年金保險',keywords:['年金保險']},
+    {label:'投資型保險',keywords:['投資型']},
+    {label:'核保',keywords:['核保']},
+    {label:'佣金',keywords:['佣金','手續費']},
+    {label:'保費與紅利',keywords:['保險費','紅利']}
   ]
 };
 
@@ -835,7 +859,7 @@ function buildTopicsUI(){
 }
 
 // ─── Data loading & boot ─────────────────────────────────────────────
-var DATA_VERSION='10';  // bump when questions.json content changes
+var DATA_VERSION='12';  // bump when questions.json content changes
 var DATA_CACHE_KEY='ins_data_v'+DATA_VERSION;
 function loadData(){
   // Purge old cache versions
@@ -1668,7 +1692,7 @@ function expKey(q){
 function loadExplanations(){
   if(EXPL_STATE===1||EXPL_STATE===2) return Promise.resolve();
   EXPL_STATE=1;
-  return fetch('explanations.json',{cache:'force-cache'})
+  return fetch('explanations.json?v='+DATA_VERSION,{cache:'no-cache'})
     .then(function(r){ if(!r.ok) throw 0; return r.json(); })
     .then(function(d){ EXPL=d; EXPL_STATE=2; })
     .catch(function(){ EXPL_STATE=3; });
