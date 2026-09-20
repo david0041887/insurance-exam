@@ -1,4 +1,4 @@
-const CACHE = 'ins-exam-v20';
+const CACHE = 'ins-exam-v21';
 const ASSETS = ['./', './index.html', './questions.json', './study.json', './manifest.json', './icon.svg'];
 
 self.addEventListener('install', e => {
@@ -25,7 +25,7 @@ self.addEventListener('fetch', e => {
   const isHTML = req.mode === 'navigate' || req.destination === 'document' ||
                  url.pathname.endsWith('/') || url.pathname.endsWith('.html');
   const isAuth = /(?:config|auth)\.js$/.test(url.pathname) || url.pathname.endsWith('admin.html');
-  const isQuestions = url.pathname.endsWith('questions.json') || url.pathname.endsWith('study.json') || url.pathname.endsWith('explanations.json');
+  const isQuestions = url.pathname.endsWith('questions.json') || url.pathname.endsWith('study.json') || url.pathname.endsWith('explanations.json') || url.pathname.endsWith('laws.json') || url.pathname.endsWith('law-refs.json');
 
   if (isHTML || isQuestions || isAuth) {
     e.respondWith(

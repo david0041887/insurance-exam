@@ -166,6 +166,19 @@
   .exp-box .exp-src{display:inline-block;margin-top:9px;padding:4px 10px;background:var(--bg);border:1px solid var(--border);border-radius:7px;font-size:11.5px;color:var(--text2)}
   .exp-box .exp-warn{display:block;margin-top:9px;color:#fbbf24;font-size:11.5px;font-weight:600}
   .exp-loading{color:var(--text3);font-size:12px;padding:10px 0}
+  .exp-law{margin-top:10px}
+  .exp-law summary{display:inline-flex;align-items:center;gap:6px;cursor:pointer;list-style:none;
+    background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:5px 11px;
+    font-size:11.5px;color:var(--text2);transition:border-color .15s}
+  .exp-law summary::-webkit-details-marker{display:none}
+  .exp-law summary:hover{border-color:var(--accent2);color:var(--text)}
+  .exp-law summary .caret{color:var(--text3);font-size:9px;transition:transform .2s}
+  .exp-law[open] summary .caret{transform:rotate(90deg)}
+  .exp-art{background:var(--bg);border:1px solid var(--border);border-left:2px solid var(--accent2);
+    border-radius:0 9px 9px 0;padding:11px 14px;margin-top:9px}
+  .exp-art b{display:block;color:var(--accent2);font-size:11.5px;font-weight:700;margin-bottom:6px;letter-spacing:.3px}
+  .exp-art p{margin:0;font-size:12.5px;line-height:1.9;color:var(--text2);white-space:pre-wrap}
+  .exp-art .src{display:block;margin-top:7px;font-size:10px;color:var(--text3)}
   /* AUTH GATE */
   body.gated{overflow:hidden}
   body.gated .header,body.gated .layout,body.gated .study-view{filter:blur(6px);pointer-events:none;user-select:none}
@@ -1712,6 +1725,7 @@ window.addEventListener('appinstalled',function(){
 
 // ─── 解析（按需載入）─────────────────────────
 var EXPL=null, EXPL_STATE=0;   // 0=未載入 1=載入中 2=完成 3=失敗
+var LAWS=null, LAWREF=null;    // 條文原文與每題對應
 function expKey(q){
   // 與 _build/gen.py 的 qkey 一致：sha1(question|answer) 前 12 碼
   return sha1Hex(q.question+'|'+String(q.answer)).slice(0,12);
@@ -1719,11 +1733,28 @@ function expKey(q){
 function loadExplanations(){
   if(EXPL_STATE===1||EXPL_STATE===2) return Promise.resolve();
   EXPL_STATE=1;
-  return fetch('explanations.json?v='+DATA_VERSION,{cache:'no-cache'})
-    .then(function(r){ if(!r.ok) throw 0; return r.json(); })
-    .then(function(d){ EXPL=d; EXPL_STATE=2; })
+  return Promise.all([
+    fetch('explanations.json?v='+DATA_VERSION,{cache:'no-cache'}).then(function(r){ if(!r.ok) throw 0; return r.json(); }),
+    fetch('laws.json?v='+DATA_VERSION,{cache:'no-cache'}).then(function(r){ return r.ok?r.json():null; }).catch(function(){ return null; }),
+    fetch('law-refs.json?v='+DATA_VERSION,{cache:'no-cache'}).then(function(r){ return r.ok?r.json():null; }).catch(function(){ return null; })
+  ]).then(function(a){ EXPL=a[0]; LAWS=a[1]; LAWREF=a[2]; EXPL_STATE=2; })
     .catch(function(){ EXPL_STATE=3; });
 }
+function lawBlock(q,src){
+  if(!src) return '';
+  var ids=(LAWREF&&LAWS)?LAWREF[expKey(q)]:null;
+  if(!ids||!ids.length) return '<div class="exp-src">&#128214; '+esc(src)+'</div>';
+  var arts=ids.map(function(i){ return LAWS[i]; }).filter(Boolean);
+  if(!arts.length) return '<div class="exp-src">&#128214; '+esc(src)+'</div>';
+  return '<details class="exp-law"><summary><span>&#128214; '+esc(src)+'</span>'
+    +'<span class="caret">&#9654;</span></summary>'
+    + arts.map(function(a){
+        return '<div class="exp-art"><b>'+esc(a.ref)+'</b><p>'+esc(a.text)+'</p></div>';
+      }).join('')
+    + '<span class="exp-art src" style="background:none;border:none;padding:4px 2px 0">'
+    + '條文取自全國法規資料庫與壽險公會現行版本</span></details>';
+}
+
 function renderExplanation(q){
   var el=document.getElementById('exp-section');
   if(!el) return;
@@ -1737,7 +1768,7 @@ function renderExplanation(q){
     body=body.replace(/\n?法源：([^\n]*)/,function(m,p){ src=p.trim(); return ''; });
     el.innerHTML='<div class="exp-box"><div class="exp-head">\u{1F4A1} 解析</div>'
       +esc(body.trim())
-      +(src?'<div class="exp-src">&#128214; '+esc(src)+'</div>':'')
+      +lawBlock(q,src)
       +(warn?'<span class="exp-warn">'+esc(warn)+'</span>':'')+'</div>';
   }
   if(EXPL_STATE===2) paint();
