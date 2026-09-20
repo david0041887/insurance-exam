@@ -94,24 +94,35 @@
   </table></div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="config.js"></script>
 <script>
 (function(){
 'use strict';
-var SB=null, ME=null, DATA=[];
+var API=window.AUTH_API||'', LS_TOKEN='ins_auth_token_v1';
+var ME=null, DATA=[];
 function el(id){return document.getElementById(id);}
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function tok(){try{return localStorage.getItem(LS_TOKEN)||'';}catch(e){return '';}}
+function api(path,opts){
+  opts=opts||{}; var h={};
+  if(tok()) h['Authorization']='Bearer '+tok();
+  if(opts.body) h['Content-Type']='application/json';
+  return fetch(API+path,{method:opts.method||'GET',headers:h,body:opts.body})
+    .then(function(r){return r.json().then(function(j){return {status:r.status,data:j};});});
+}
 function fail(m){ el('state').innerHTML='<span class="err">'+esc(m)+'</span>'; el('state').style.display=''; el('tbl').style.display='none'; }
+function asDate(d){ if(!d) return null; var t=new Date(d.indexOf('T')<0? d.replace(' ','T')+'Z' : d); return isNaN(t)?null:t; }
 function fmt(d){
-  if(!d) return '—';
-  var t=new Date(d), now=new Date(), diff=(now-t)/1000;
-  if(diff<60) return '剛剛';
-  if(diff<3600) return Math.floor(diff/60)+' 分前';
-  if(diff<86400) return Math.floor(diff/3600)+' 小時前';
-  if(diff<86400*30) return Math.floor(diff/86400)+' 天前';
+  var t=asDate(d); if(!t) return '\u2014';
+  var diff=(Date.now()-t)/1000;
+  if(diff<60) return '\u525b\u525b';
+  if(diff<3600) return Math.floor(diff/60)+' \u5206\u524d';
+  if(diff<86400) return Math.floor(diff/3600)+' \u5c0f\u6642\u524d';
+  if(diff<86400*30) return Math.floor(diff/86400)+' \u5929\u524d';
   return t.getFullYear()+'/'+(t.getMonth()+1)+'/'+t.getDate();
 }
+function acc(r){ return r.total_answered? Math.round(r.total_correct/r.total_answered*1000)/10 : 0; }
+function tile(l,v,s){ return '<div class="tile"><div class="lbl">'+esc(l)+'</div><div class="val">'+v+'</div><div class="sub">'+esc(s)+'</div></div>'; }
 
 function tiles(rows){
   var n=rows.length;
@@ -119,16 +130,15 @@ function tiles(rows){
   var ans=rows.reduce(function(a,r){return a+(r.total_answered||0);},0);
   var cor=rows.reduce(function(a,r){return a+(r.total_correct||0);},0);
   var today=new Date(); today.setHours(0,0,0,0);
-  var act=rows.filter(function(r){ return r.last_seen_at && new Date(r.last_seen_at)>=today; }).length;
+  var act=rows.filter(function(r){var d=asDate(r.last_seen_at);return d&&d>=today;}).length;
   var w=new Date(Date.now()-7*86400000);
-  var wk=rows.filter(function(r){ return r.last_seen_at && new Date(r.last_seen_at)>=w; }).length;
+  var wk=rows.filter(function(r){var d=asDate(r.last_seen_at);return d&&d>=w;}).length;
   el('tiles').innerHTML=
-     tile('總帳號',n,blocked?(blocked+' 個已停用'):'全部啟用中')
-   + tile('今日活躍',act,'過去 7 天 '+wk+' 人')
-   + tile('累計作答',ans.toLocaleString(),'全站')
-   + tile('整體正確率',(ans?Math.round(cor/ans*1000)/10:0)+'%','答對 '+cor.toLocaleString()+' 題');
+     tile('\u7e3d\u5e33\u865f',n,blocked?(blocked+' \u500b\u5df2\u505c\u7528'):'\u5168\u90e8\u555f\u7528\u4e2d')
+   + tile('\u4eca\u65e5\u6d3b\u8e8d',act,'\u904e\u53bb 7 \u5929 '+wk+' \u4eba')
+   + tile('\u7d2f\u8a08\u4f5c\u7b54',ans.toLocaleString(),'\u5168\u7ad9')
+   + tile('\u6574\u9ad4\u6b63\u78ba\u7387',(ans?Math.round(cor/ans*1000)/10:0)+'%','\u7b54\u5c0d '+cor.toLocaleString()+' \u984c');
 }
-function tile(l,v,s){ return '<div class="tile"><div class="lbl">'+esc(l)+'</div><div class="val">'+v+'</div><div class="sub">'+esc(s)+'</div></div>'; }
 
 function render(){
   var q=el('q').value.trim().toLowerCase();
@@ -137,98 +147,83 @@ function render(){
     if(f==='active'&&r.is_blocked) return false;
     if(f==='blocked'&&!r.is_blocked) return false;
     if(f==='admin'&&!r.is_admin) return false;
-    if(q){
-      var hay=((r.full_name||'')+' '+(r.email||'')).toLowerCase();
-      if(hay.indexOf(q)<0) return false;
-    }
+    if(q&&((r.name||'')+' '+(r.email||'')).toLowerCase().indexOf(q)<0) return false;
     return true;
   });
   rows.sort(function(a,b){
     if(sort==='answered') return (b.total_answered||0)-(a.total_answered||0);
-    if(sort==='accuracy') return (b.accuracy||0)-(a.accuracy||0);
-    if(sort==='created') return new Date(b.created_at||0)-new Date(a.created_at||0);
-    return new Date(b.last_seen_at||0)-new Date(a.last_seen_at||0);
+    if(sort==='accuracy') return acc(b)-acc(a);
+    if(sort==='created') return String(b.created_at||'').localeCompare(String(a.created_at||''));
+    return String(b.last_seen_at||'').localeCompare(String(a.last_seen_at||''));
   });
   tiles(DATA);
-  if(!rows.length){ el('state').textContent='沒有符合條件的帳號'; el('state').style.display=''; el('tbl').style.display='none'; return; }
+  if(!rows.length){ el('state').textContent='\u6c92\u6709\u7b26\u5408\u689d\u4ef6\u7684\u5e33\u865f'; el('state').style.display=''; el('tbl').style.display='none'; return; }
   el('state').style.display='none'; el('tbl').style.display='';
   el('rows').innerHTML=rows.map(function(r){
-    var name=r.full_name||r.email||'(未命名)';
-    var av=r.avatar_url
-      ? '<img src="'+esc(r.avatar_url)+'" alt="" referrerpolicy="no-referrer">'
-      : '<span class="ini">'+esc(name.slice(0,1))+'</span>';
-    var secs='';
-    if(r.section_stats && Object.keys(r.section_stats).length){
-      secs='<details class="secs"><summary>各科進度</summary><div>'
-        + Object.keys(r.section_stats).sort().map(function(k){
-            var v=r.section_stats[k];
-            return esc(k)+'：'+v.seen+' 題 / '+v.stars+' 星';
-          }).join('<br>')
+    var name=r.name||r.email||'(\u672a\u547d\u540d)';
+    var av=r.avatar? '<img src="'+esc(r.avatar)+'" alt="" referrerpolicy="no-referrer">'
+                   : '<span class="ini">'+esc(name.slice(0,1))+'</span>';
+    var secs='', ss=null;
+    try{ ss=r.section_stats? JSON.parse(r.section_stats):null; }catch(e){}
+    if(ss&&Object.keys(ss).length){
+      secs='<details class="secs"><summary>\u5404\u79d1\u9032\u5ea6</summary><div>'
+        + Object.keys(ss).sort().map(function(k){return esc(k)+'\uff1a'+ss[k].seen+' \u984c / '+ss[k].stars+' \u661f';}).join('<br>')
         + '</div></details>';
     }
-    var isMe = ME && r.id===ME.id;
+    var isMe=ME&&r.id===ME.id;
     return '<tr'+(r.is_blocked?' class="blocked"':'')+'>'
       + '<td class="l"><div class="who">'+av+'<div><b>'+esc(name)+'</b><span>'+esc(r.email||'')+'</span>'+secs+'</div></div></td>'
       + '<td>'+(r.total_answered||0).toLocaleString()+'</td>'
-      + '<td>'+(r.accuracy||0)+'%</td>'
+      + '<td>'+acc(r)+'%</td>'
       + '<td>'+(r.wrong_pool||0)+'</td>'
-      + '<td>'+(r.streak_days||0)+' 天</td>'
+      + '<td>'+(r.streak_days||0)+' \u5929</td>'
       + '<td>'+fmt(r.created_at)+'</td>'
       + '<td>'+fmt(r.last_seen_at)+'</td>'
-      + '<td>'+(r.is_admin?'<span class="pill adm">管理員</span> ':'')
-             +(r.is_blocked?'<span class="pill no">已停用</span>':'<span class="pill ok">啟用中</span>')+'</td>'
-      + '<td>'+(isMe
-          ? '<button class="act" disabled title="不能鎖自己">本人</button>'
+      + '<td>'+(r.is_admin?'<span class="pill adm">\u7ba1\u7406\u54e1</span> ':'')
+             +(r.is_blocked?'<span class="pill no">\u5df2\u505c\u7528</span>':'<span class="pill ok">\u555f\u7528\u4e2d</span>')+'</td>'
+      + '<td>'+(isMe? '<button class="act" disabled title="\u4e0d\u80fd\u9396\u81ea\u5df1">\u672c\u4eba</button>'
           : '<button class="act'+(r.is_blocked?' un':'')+'" data-id="'+esc(r.id)+'" data-b="'+(r.is_blocked?1:0)+'">'
-            +(r.is_blocked?'解除停用':'停用帳號')+'</button>')+'</td>'
-      + '</tr>';
+            +(r.is_blocked?'\u89e3\u9664\u505c\u7528':'\u505c\u7528\u5e33\u865f')+'</button>')+'</td></tr>';
   }).join('');
   Array.prototype.forEach.call(document.querySelectorAll('#rows .act[data-id]'),function(b){
-    b.onclick=function(){ toggleBlock(b.dataset.id, b.dataset.b==='1'); };
+    b.onclick=function(){ toggleBlock(b.dataset.id,b.dataset.b==='1'); };
   });
 }
 
-function toggleBlock(id, currentlyBlocked){
+function toggleBlock(id,blocked){
   var row=DATA.filter(function(r){return r.id===id;})[0];
-  var who=(row&&(row.full_name||row.email))||id;
+  var who=(row&&(row.name||row.email))||id;
   var note=null;
-  if(!currentlyBlocked){
-    note=prompt('停用「'+who+'」的帳號？\n可填入原因（選填，會顯示給該使用者）：','');
+  if(!blocked){
+    note=prompt('\u505c\u7528\u300c'+who+'\u300d\u7684\u5e33\u865f\uff1f\n\u53ef\u586b\u5165\u539f\u56e0\uff08\u9078\u586b\uff0c\u6703\u986f\u793a\u7d66\u8a72\u4f7f\u7528\u8005\uff09\uff1a','');
     if(note===null) return;
-  } else if(!confirm('解除停用「'+who+'」？')) return;
-  SB.from('profiles')
-    .update({is_blocked:!currentlyBlocked, blocked_note: currentlyBlocked?null:(note||null)})
-    .eq('id',id)
+  } else if(!confirm('\u89e3\u9664\u505c\u7528\u300c'+who+'\u300d\uff1f')) return;
+  api('/api/admin/block',{method:'POST',body:JSON.stringify({id:id,blocked:!blocked,note:note||null})})
     .then(function(r){
-      if(r.error){ alert('操作失敗：'+r.error.message); return; }
+      if(r.status!==200){ alert('\u64cd\u4f5c\u5931\u6557\uff1a'+((r.data&&r.data.error)||r.status)); return; }
       load();
     });
 }
 
 function load(){
-  SB.from('admin_overview').select('*').then(function(r){
-    if(r.error){ fail('讀取失敗：'+r.error.message); return; }
-    DATA=r.data||[];
-    render();
-  });
+  api('/api/admin/users').then(function(r){
+    if(r.status!==200){ fail('\u8b80\u53d6\u5931\u6557\uff1a'+((r.data&&r.data.error)||r.status)); return; }
+    DATA=r.data.users||[]; render();
+  }).catch(function(){ fail('\u7121\u6cd5\u9023\u7dda\u5230\u767b\u5165\u670d\u52d9'); });
 }
 
 function boot(){
-  if(!window.SUPABASE_URL||!window.SUPABASE_ANON_KEY){ fail('尚未在 config.js 設定 Supabase 連線資訊'); return; }
-  SB=window.supabase.createClient(window.SUPABASE_URL,window.SUPABASE_ANON_KEY);
-  el('signout').onclick=function(){ SB.auth.signOut().then(function(){ location.href='./'; }); };
+  if(!API){ fail('\u5c1a\u672a\u5728 config.js \u8a2d\u5b9a Worker \u7db2\u5740'); return; }
+  el('signout').onclick=function(){ try{localStorage.removeItem(LS_TOKEN);}catch(e){} location.href='./'; };
   ['q','filter','sort'].forEach(function(id){ el(id).addEventListener('input',render); });
-  SB.auth.getSession().then(function(r){
-    var s=r.data&&r.data.session;
-    if(!s){ location.href='./'; return; }
-    SB.from('profiles').select('*').eq('id',s.user.id).maybeSingle().then(function(p){
-      if(p.error||!p.data){ fail('無法讀取帳號資料'); return; }
-      if(!p.data.is_admin){ fail('這個帳號沒有後台權限'); return; }
-      ME=p.data;
-      el('me').textContent=(p.data.full_name||p.data.email||'');
-      load();
-    });
-  });
+  if(!tok()){ location.href='./'; return; }
+  api('/api/me').then(function(r){
+    if(r.status!==200||!r.data.user){ location.href='./'; return; }
+    if(!r.data.user.is_admin){ fail('\u9019\u500b\u5e33\u865f\u6c92\u6709\u5f8c\u53f0\u6b0a\u9650'); return; }
+    ME=r.data.user;
+    el('me').textContent=ME.name||ME.email||'';
+    load();
+  }).catch(function(){ fail('\u7121\u6cd5\u9023\u7dda\u5230\u767b\u5165\u670d\u52d9'); });
 }
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();
 })();

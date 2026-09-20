@@ -2,3 +2,5 @@
 _build/
 _incoming_115/
 .claude/
+.wrangler/
+node_modules/
