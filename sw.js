@@ -1,5 +1,5 @@
-const CACHE = 'ins-exam-v10';
-const ASSETS = ['./', './index.html', './questions.json', './manifest.json', './icon.svg'];
+const CACHE = 'ins-exam-v12';
+const ASSETS = ['./', './index.html', './questions.json', './study.json', './manifest.json', './icon.svg'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
@@ -22,7 +22,7 @@ self.addEventListener('fetch', e => {
   const url = new URL(req.url);
   const isHTML = req.mode === 'navigate' || req.destination === 'document' ||
                  url.pathname.endsWith('/') || url.pathname.endsWith('.html');
-  const isQuestions = url.pathname.endsWith('questions.json');
+  const isQuestions = url.pathname.endsWith('questions.json') || url.pathname.endsWith('study.json');
 
   if (isHTML || isQuestions) {
     e.respondWith(

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#0f1117">
 <link rel="manifest" href="manifest.json">
-<title>保險經紀代理考古題練習</title>
+<title>保險經紀人考古題練習</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap');
   :root, [data-theme="dark"]{
@@ -32,17 +32,6 @@
   .header-stats{display:flex;gap:16px;align-items:center}
   .stat-chip{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:5px 13px;font-size:12px;color:var(--text2);display:flex;align-items:center;gap:5px}
   .stat-chip strong{color:var(--text);font-weight:600}
-  /* COUNTDOWN IN HEADER */
-  .countdown-chip{display:flex;align-items:center;gap:8px;padding:7px 14px;border-radius:12px;background:linear-gradient(135deg,rgba(239,68,68,.18),rgba(245,158,11,.10));border:1px solid rgba(239,68,68,.35)}
-  .countdown-chip.past{background:rgba(139,147,196,.1);border-color:var(--border)}
-  .countdown-chip .c-label{font-size:10px;color:var(--text2);font-weight:600;letter-spacing:1px;white-space:nowrap}
-  .countdown-chip .c-days{font-size:22px;font-weight:800;color:#ef4444;font-variant-numeric:tabular-nums;line-height:1;letter-spacing:-1px}
-  .countdown-chip .c-days.warn{color:#f59e0b}
-  .countdown-chip .c-days.safe{color:var(--correct)}
-  .countdown-chip .c-unit{font-size:11px;color:var(--text2);font-weight:600}
-  .countdown-chip .c-date{font-size:9px;color:var(--text3);letter-spacing:.8px}
-  @keyframes urgentPulse{0%,100%{opacity:1}50%{opacity:.55}}
-  .countdown-chip .c-days.urgent{animation:urgentPulse 1.2s infinite}
   .layout{display:flex;flex:1;max-width:1160px;margin:0 auto;width:100%;padding:20px 16px;gap:20px}
   .sidebar{width:260px;flex-shrink:0;display:flex;flex-direction:column;gap:14px}
   .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px}
@@ -92,49 +81,9 @@
   .note-body{margin-top:8px}
   .note-textarea{width:100%;min-height:80px;max-height:300px;resize:vertical;padding:10px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;font-family:inherit;line-height:1.6;box-sizing:border-box;transition:border-color .15s}
   .note-textarea:focus{border-color:var(--accent);outline:none}
-  /* ESSAY MODE */
-  .essay-toggle-btn{background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;padding:7px 14px;border-radius:10px;border:none;cursor:pointer;font-weight:700;font-size:12px;font-family:inherit;box-shadow:0 4px 12px rgba(139,92,246,.35);white-space:nowrap}
-  .essay-toggle-btn:hover{transform:translateY(-1px)}
-  .essay-view{display:none;flex:1;min-width:0;gap:18px;max-width:1280px;margin:0 auto;width:100%;padding:20px 16px}
-  .essay-view.show{display:flex}
-  .essay-sidebar{width:280px;flex-shrink:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;max-height:calc(100vh - 140px);overflow-y:auto;position:sticky;top:20px}
-  .essay-list-item{padding:10px 12px;border-radius:9px;cursor:pointer;border:1px solid var(--border);margin-bottom:6px;background:var(--bg);transition:all .15s}
-  .essay-list-item:hover{border-color:var(--accent)}
-  .essay-list-item.active{background:var(--surface2);border-color:var(--accent);color:var(--accent)}
-  .essay-list-item-meta{font-size:10px;color:var(--text3);letter-spacing:.5px;margin-bottom:3px}
-  .essay-list-item-topic{font-size:13px;font-weight:600}
-  .essay-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:14px}
-  .essay-question-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px}
-  .essay-question-text{font-size:15px;line-height:1.8;margin:8px 0 14px}
-  .essay-hints{background:var(--bg);border:1px dashed var(--border);border-radius:10px;padding:10px 14px;font-size:11px;color:var(--text3);line-height:1.7}
-  .essay-hints strong{color:var(--text2)}
-  .essay-textarea{width:100%;min-height:360px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;color:var(--text);font-size:14px;line-height:1.8;font-family:'Noto Sans TC',sans-serif;resize:vertical;outline:none}
-  .essay-textarea:focus{border-color:var(--accent)}
-  .essay-toolbar{display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--text3)}
-  .essay-grade-btn{background:linear-gradient(135deg,#10b981,#059669);color:#fff;padding:10px 20px;border-radius:10px;border:none;cursor:pointer;font-weight:700;font-size:13px;font-family:inherit;box-shadow:0 4px 12px rgba(16,185,129,.35)}
-  .essay-grade-btn:hover{transform:translateY(-1px)}
-  .essay-grade-btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
-  .essay-result{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:22px}
-  .essay-score-big{font-size:48px;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1}
-  .essay-score-max{color:var(--text3);font-size:18px;font-weight:600;margin-left:4px}
-  .essay-breakdown{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:10px;margin:18px 0}
-  .essay-breakdown-cell{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center}
-  .essay-breakdown-cell .lbl{font-size:10px;color:var(--text3);letter-spacing:.5px;margin-bottom:4px}
-  .essay-breakdown-cell .val{font-size:17px;font-weight:700;color:var(--accent)}
-  .essay-breakdown-cell .max{font-size:11px;color:var(--text3);margin-left:2px}
-  .essay-feedback h4{font-size:13px;margin:14px 0 8px;color:var(--text2)}
-  .essay-feedback ul{margin-left:18px;font-size:13px;line-height:1.8;color:var(--text2)}
-  .essay-feedback li{margin-bottom:4px}
-  .essay-feedback .strengths li::marker{color:var(--correct)}
-  .essay-feedback .weaknesses li::marker{color:var(--wrong)}
-  .essay-feedback .missed li::marker{color:#f59e0b}
   .profile-chip{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:5px 13px;font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px;cursor:pointer;white-space:nowrap}
   .profile-chip:hover{border-color:var(--accent)}
   .profile-chip strong{color:var(--text)}
-  @media(max-width:768px){
-    .essay-view{flex-direction:column;padding:10px;gap:12px}
-    .essay-sidebar{width:100%;max-height:200px;position:static}
-  }
   /* TOOL BUTTONS */
   .tool-btn{width:100%;padding:8px;margin-top:6px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text2);font-size:12px;cursor:pointer;font-family:inherit;transition:all .15s}
   .tool-btn:first-child{margin-top:0}
@@ -145,6 +94,49 @@
   .update-toast-btn{background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;color:#fff;padding:6px 14px;border-radius:8px;font-weight:700;cursor:pointer;font-family:inherit;font-size:12px}
   .update-toast-x{background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:18px;padding:0 4px;font-family:inherit}
   /* MODAL */
+  /* STUDY / 讀書資料 */
+  .study-btn{background:linear-gradient(135deg,#6366f1,#4338ca);color:#fff;padding:7px 14px;border-radius:10px;border:none;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:transform .15s;white-space:nowrap}
+  .study-btn:hover{transform:translateY(-1px)}
+  .study-view{display:none;flex:1;min-width:0;gap:20px;max-width:1280px;margin:0 auto;width:100%;padding:20px 16px}
+  .study-view.show{display:flex}
+  .study-sidebar{width:270px;flex-shrink:0}
+  .study-nav{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;position:sticky;top:14px;max-height:calc(100vh - 28px);overflow-y:auto}
+  .study-group{font-size:10px;letter-spacing:1px;color:var(--text3);font-weight:700;margin:12px 0 6px}
+  .study-group:first-child{margin-top:0}
+  .study-item{padding:9px 11px;border-radius:9px;cursor:pointer;border:1px solid var(--border);margin-bottom:6px;background:var(--bg);font-size:13px;font-weight:600;transition:all .15s}
+  .study-item:hover{border-color:var(--accent)}
+  .study-item.active{background:var(--surface2);border-color:var(--accent);color:var(--accent)}
+  .study-item .sub{font-size:10px;color:var(--text3);font-weight:400;margin-top:3px;line-height:1.4}
+  .study-toc{border-top:1px solid var(--border);margin-top:10px;padding-top:10px}
+  .study-toc a{display:block;font-size:11px;color:var(--text2);text-decoration:none;padding:3px 0;line-height:1.5}
+  .study-toc a:hover{color:var(--accent)}
+  .study-toc a.lv2{padding-left:10px;color:var(--text3)}
+  .study-main{flex:1;min-width:0}
+  .study-doc{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:30px 34px;font-size:14px;line-height:1.85;color:var(--text2)}
+  .study-doc h1{font-size:21px;color:var(--text);margin:26px 0 12px;padding-bottom:9px;border-bottom:2px solid var(--accent)}
+  .study-doc h1:first-child{margin-top:0}
+  .study-doc h2{font-size:17px;color:var(--text);margin:22px 0 10px;padding-left:10px;border-left:3px solid var(--accent)}
+  .study-doc h3{font-size:15px;color:var(--text);margin:18px 0 8px}
+  .study-doc h4{font-size:13.5px;color:var(--text2);margin:14px 0 6px}
+  .study-doc p{margin:8px 0}
+  .study-doc strong{color:var(--text);font-weight:700}
+  .study-doc code{background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:1px 5px;font-size:12px;color:var(--accent2)}
+  .study-doc pre{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:13px 16px;overflow-x:auto;margin:10px 0}
+  .study-doc pre code{background:none;border:none;padding:0;color:var(--text2);font-size:12px;line-height:1.7}
+  .study-doc blockquote{background:var(--bg);border-left:3px solid var(--accent2);border-radius:0 8px 8px 0;padding:11px 16px;margin:12px 0;font-size:12.5px;color:var(--text3)}
+  .study-doc ul,.study-doc ol{margin:8px 0 8px 22px}
+  .study-doc li{margin:4px 0}
+  .study-doc hr{border:none;border-top:1px solid var(--border);margin:20px 0}
+  .study-doc a{color:var(--accent);text-decoration:none}
+  .study-doc a:hover{text-decoration:underline}
+  .study-doc .tw{overflow-x:auto;margin:12px 0;border:1px solid var(--border);border-radius:10px}
+  .study-doc table{border-collapse:collapse;width:100%;font-size:12.5px}
+  .study-doc th{background:var(--surface2);color:var(--text);font-weight:700;padding:9px 12px;text-align:left;white-space:nowrap}
+  .study-doc td{padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+  .study-doc .dl{margin-bottom:16px}
+  .study-doc .dl a{display:inline-block;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:7px 15px;font-size:12px;font-weight:600}
+  .study-doc .links li{margin:8px 0}
+  .study-doc .muted{color:var(--text3);font-size:11px}
   .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:1000;padding:20px}
   .modal-backdrop.show{display:flex}
   .modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:28px;max-width:560px;width:100%;max-height:80vh;overflow-y:auto}
@@ -206,6 +198,7 @@
   .badge-property{background:rgba(6,182,212,.15);color:var(--property);border:1px solid rgba(6,182,212,.3)}
   .badge-section{background:rgba(255,255,255,.05);color:var(--text2);border:1px solid var(--border)}
   .badge-wrong-count{background:rgba(239,68,68,.18);color:#f87171;border:1px solid rgba(239,68,68,.4)}
+  .badge-multi{background:rgba(245,158,11,.18);color:#fbbf24;border:1px solid rgba(245,158,11,.45)}
   /* STARS ROW */
   .stars-row{display:flex;align-items:center;justify-content:flex-end;gap:4px;margin-bottom:14px}
   .star{font-size:20px;cursor:default;transition:transform .15s}
@@ -265,11 +258,11 @@
     .logo-text{font-size:14px}
     .logo-sub{display:none}
     .logo-icon{width:30px;height:30px;font-size:15px}
-    .countdown-chip{display:flex!important;padding:5px 10px;gap:5px;flex-shrink:0}
-    .countdown-chip .c-label{display:none}
-    .countdown-chip .c-days{font-size:18px}
-    .countdown-chip .c-date{display:none}
-    .countdown-chip .c-unit{font-size:10px}
+    .study-view{flex-direction:column;padding:10px;gap:12px}
+    .study-sidebar{width:100%}
+    .study-nav{position:static;max-height:none}
+    .study-toc{display:none}
+    .study-doc{padding:20px 16px}
     .question-card{padding:18px 16px}
     .question-text{font-size:14px}
     .year-grid{grid-template-columns:repeat(5,1fr)}
@@ -284,19 +277,13 @@
     <div class="logo">
       <div class="logo-icon">&#128203;</div>
       <div>
-        <div class="logo-text">保險經紀代理 考古題</div>
+        <div class="logo-text">保險經紀人 考古題</div>
         <div class="logo-sub">INSURANCE BROKER EXAM PRACTICE</div>
       </div>
     </div>
-    <div class="countdown-chip" id="countdown-banner">
-      <span class="c-label">&#128226; 距考試</span>
-      <span class="c-days" id="countdown-days">--</span>
-      <span class="c-unit">天</span>
-      <span class="c-date">&nbsp;6/6</span>
-    </div>
   </div>
   <div class="header-stats">
-    <button class="essay-toggle-btn" onclick="toggleEssayView()" id="essay-toggle">&#128221; 申論練習</button>
+    <button class="study-btn" onclick="toggleStudyView()" id="study-toggle">&#128218; 讀書資料</button>
     <div class="stat-chip">題庫 <strong id="hdr-total">0</strong> 題</div>
     <div class="stat-chip">&#10003; <strong id="hdr-correct" style="color:var(--correct)">0</strong> &nbsp;&#10007; <strong id="hdr-wrong" style="color:var(--wrong)">0</strong></div>
   </div>
@@ -392,7 +379,7 @@
         <div class="welcome-icon">&#127919;</div>
         <h2>準備好了嗎？</h2>
         <p>選擇左側條件開始練習<br><br>
-        題庫涵蓋民國 99–114 年考古題，共 <strong id="welcome-count">0</strong> 題<br><br>
+        題庫涵蓋民國 99–115 年考古題，共 <strong id="welcome-count">0</strong> 題<br><br>
         ⭐ 答對 +1 顆星（最多 3 顆）<br>
         ❌ 答錯 → 星星歸零 + 列入錯題複習池<br>
         🔥 錯題複習：連續答對 3 次才移出<br><br>
@@ -459,37 +446,15 @@
     </div>
   </main>
 </div>
-<div class="essay-view" id="essay-view">
-  <aside class="essay-sidebar">
-    <div class="panel-title">&#128221; 申論題庫</div>
-    <div id="essay-list"></div>
+<div class="study-view" id="study-view">
+  <aside class="study-sidebar">
+    <div class="study-nav">
+      <div id="study-list"></div>
+      <div class="study-toc" id="study-toc"></div>
+    </div>
   </aside>
-  <main class="essay-main">
-    <div class="essay-question-card" id="essay-question-card" style="display:none">
-      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
-        <span class="q-badge badge-year" id="essay-meta-year">民國 --</span>
-        <span class="q-badge badge-section" id="essay-meta-topic">--</span>
-      </div>
-      <div class="essay-question-text" id="essay-question-text"></div>
-      <div class="essay-hints" id="essay-hints"></div>
-    </div>
-    <div class="essay-question-card" id="essay-answer-card" style="display:none">
-      <div class="panel-title" style="margin-bottom:8px">&#9999;&#65039; 作答區</div>
-      <textarea class="essay-textarea" id="essay-textarea" placeholder="在此作答...&#10;&#10;提示：&#10;• 依「一、(一)1、(1)①」層級分點&#10;• 每項前加標題，便於閱卷抓分&#10;• 引用法條精確到項（例：保§64 II）&#10;• 論述後記得涵攝本案事實&#10;• 最後寫結論扣題"></textarea>
-      <div class="essay-toolbar">
-        <div><span id="essay-wordcount">0</span> 字 ｜ 草稿自動存檔</div>
-        <div style="display:flex;gap:8px">
-          <button class="tool-btn" style="width:auto;margin:0;padding:7px 14px" onclick="clearEssayDraft()">清空</button>
-          <button class="essay-grade-btn" id="essay-grade-btn" onclick="submitEssay()">&#129504; 送交 AI 批改</button>
-        </div>
-      </div>
-    </div>
-    <div class="essay-result" id="essay-result" style="display:none"></div>
-    <div id="essay-empty" class="essay-question-card" style="text-align:center;padding:60px 20px">
-      <div style="font-size:40px;margin-bottom:10px">&#128221;</div>
-      <h2 style="margin-bottom:8px">選擇左側題目開始作答</h2>
-      <p style="color:var(--text2);font-size:13px">AI 批改約需 5-10 秒。草稿自動存在本機，切換題目或重整網頁都不會丟失。</p>
-    </div>
+  <main class="study-main">
+    <div class="study-doc" id="study-doc">載入中…</div>
   </main>
 </div>
 <div class="modal-backdrop" id="shortcuts-modal" onclick="if(event.target===this)hideShortcuts()">
@@ -521,8 +486,6 @@ var LS_STARS  = 'ins_stars_v2';  // {idx: 0|1|2|3}
 var LS_BOOKMARKS = 'ins_bookmarks_v1';  // {idx: true}
 var LS_STATS  = 'ins_stats_v1';  // {YYYY-MM-DD: {answered, correct}}
 var LS_THEME  = 'ins_theme_v1';  // 'dark' | 'light'
-var LS_ESSAY_DRAFTS = 'ins_essay_drafts_v1';  // {qid: text}
-var LS_ESSAY_RESULTS = 'ins_essay_results_v1'; // {qid: result}
 var LS_NOTES        = 'ins_notes_v1';
 
 function loadD(key){ try{ return JSON.parse(localStorage.getItem(key)||'{}'); }catch(e){ return {}; } }
@@ -702,30 +665,6 @@ var TOPICS={
     {label:'逆選擇與道德危險',keywords:['逆選擇','道德危險']},
     {label:'團體保險',keywords:['團體保險']},
     {label:'投資型保險',keywords:['投資型']}
-  ],
-  '財產保險行銷概要':[
-    {label:'業務員招攬',keywords:['業務員','招攬']},
-    {label:'保險經紀人/代理人',keywords:['保險經紀人','保險代理人']},
-    {label:'理賠實務',keywords:['理賠']},
-    {label:'核保',keywords:['核保']},
-    {label:'佣金與報酬',keywords:['佣金','手續費']},
-    {label:'汽車保險',keywords:['汽車保險','強制汽車','強制險']},
-    {label:'火災保險',keywords:['火災保險']},
-    {label:'責任保險',keywords:['責任保險']},
-    {label:'保險費',keywords:['保險費']},
-    {label:'契約撤銷/終止',keywords:['撤銷','解除','終止']}
-  ],
-  '人身保險行銷概要':[
-    {label:'業務員招攬',keywords:['業務員','招攬']},
-    {label:'人壽保險銷售',keywords:['人壽保險','定期壽險','終身壽險']},
-    {label:'保險經紀人/代理人',keywords:['保險經紀人','保險代理人']},
-    {label:'理賠實務',keywords:['理賠']},
-    {label:'健康保險',keywords:['健康保險']},
-    {label:'年金保險',keywords:['年金保險']},
-    {label:'投資型保險',keywords:['投資型']},
-    {label:'核保',keywords:['核保']},
-    {label:'佣金',keywords:['佣金','手續費']},
-    {label:'保費與紅利',keywords:['保險費','紅利']}
   ]
 };
 
@@ -858,7 +797,7 @@ function buildTopicsUI(){
 }
 
 // ─── Data loading & boot ─────────────────────────────────────────────
-var DATA_VERSION='7';  // bump when questions.json content changes
+var DATA_VERSION='9';  // bump when questions.json content changes
 var DATA_CACHE_KEY='ins_data_v'+DATA_VERSION;
 function loadData(){
   // Purge old cache versions
@@ -1110,6 +1049,10 @@ function initSession(){
 function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 // Strip next-question contamination from option text (e.g. "...。 B21 下一題...")
+// 多答案題：answer 可能是 'CD'、'ABCD'（考選部公告二擇一或一律給分）
+function answerLetters(q){ return String(q.answer||'').split('').filter(function(c){return 'ABCD'.indexOf(c)>=0;}); }
+function isMultiAnswer(q){ return answerLetters(q).length>1; }
+
 function cleanOption(text){
   if(!text) return text;
   text=text.replace(/\s+[A-D]\s?\d{1,3}\s*[、,]?\s*[\s\S]*$/,'');
@@ -1301,6 +1244,8 @@ function renderQuestion(){
   var metaHTML=(q.year?'<span class="q-badge badge-year">民國 '+q.year+' 年</span>':'');
   metaHTML+='<span class="q-badge '+typeClass+'">'+typeLabel+'</span>';
   metaHTML+='<span class="q-badge badge-section">'+q.section+'</span>';
+  var _multi=answerLetters(q).length;
+  if(_multi>1) metaHTML+='<span class="q-badge badge-multi">'+(_multi>=4?'✔ 本題一律給分':'✔ 本題 '+_multi+' 擇一皆給分')+'</span>';
   if(wrongCount>0) metaHTML+='<span class="q-badge badge-wrong-count">❌ 錯過 '+wrongCount+' 次</span>';
   document.getElementById('q-meta').innerHTML=metaHTML;
   // Stars
@@ -1464,9 +1409,13 @@ function showFinished(){
       html+='<div style="color:var(--text);margin-bottom:5px">'+it.q.question+'</div>';
       var dO=it.displayOrder||['A','B','C','D'];
       var selV='ABCD'.charAt(dO.indexOf(it.selected));
-      var ansV='ABCD'.charAt(dO.indexOf(it.q.answer));
+      var aL=answerLetters(it.q);
       html+='<div class="wrong-item-ans">你選了 <span style="color:var(--wrong)"><strong>'+selV+'</strong>：'+esc(cleanOption(it.q.options[it.selected]))+'</span></div>';
-      html+='<div class="wrong-item-ans">正確答案 <strong style="color:var(--correct)">'+ansV+'</strong>：'+esc(cleanOption(it.q.options[it.q.answer]))+'</div>';
+      aL.forEach(function(L,n){
+        var v='ABCD'.charAt(dO.indexOf(L));
+        var lbl=n===0?(aL.length>1?'正確答案（皆給分）':'正確答案'):'　';
+        html+='<div class="wrong-item-ans">'+lbl+' <strong style="color:var(--correct)">'+v+'</strong>：'+esc(cleanOption(it.q.options[L])||'')+'</div>';
+      });
       if(cnt>1) html+='<div style="font-size:11px;color:#f87171;margin-top:4px">此題累計錯誤 '+cnt+' 次</div>';
       html+='</div>';
     });
@@ -1505,36 +1454,6 @@ function restartSession(){
 }
 
 // ─── Daily panel + stats dashboard ───────────────────────────────────
-var EXAM_DATE=new Date(2026,5,6); // 2026-06-06 (month is 0-indexed)
-function daysUntilExam(){
-  var now=new Date(); now.setHours(0,0,0,0);
-  var target=new Date(EXAM_DATE); target.setHours(0,0,0,0);
-  return Math.ceil((target-now)/(1000*60*60*24));
-}
-function updateCountdownBanner(){
-  var d=daysUntilExam();
-  var banner=document.getElementById('countdown-banner');
-  var daysEl=document.getElementById('countdown-days');
-  if(!daysEl) return;
-  if(d<0){
-    banner.className='countdown-chip past';
-    daysEl.textContent='已過';
-    daysEl.className='c-days';
-  } else if(d===0){
-    banner.className='countdown-chip';
-    daysEl.textContent='今天';
-    daysEl.className='c-days urgent';
-  } else {
-    banner.className='countdown-chip';
-    daysEl.textContent=d;
-    var cls='c-days';
-    if(d<=7) cls+=' urgent';
-    else if(d<=60&&d>30) cls+=' warn';
-    else if(d>60) cls+=' safe';
-    daysEl.className=cls;
-  }
-}
-updateCountdownBanner();
 function getTodayCorrect(){
   var d=loadD(LS_STATS);
   return (d[todayKey()]||{}).correct||0;
@@ -1546,10 +1465,7 @@ function updateDailyPanel(){
   var streak=getStreakDays();
   var goal=300;
   var pct=Math.min(100,Math.round(correct/goal*100));
-  var d=daysUntilExam();
-  var countdown=d>0?('距 6/6 考試 <strong style="color:var(--wrong)">'+d+'</strong> 天'):(d===0?'<strong style="color:var(--wrong)">今天就是考試日！</strong>':'<span style="color:var(--text3)">考試已過</span>');
-  el.innerHTML='<div style="margin-bottom:6px">'+countdown+'</div>'
-    +'<div>今日答對 <strong style="color:var(--correct)">'+correct+'</strong> / '+goal+' 題</div>'
+  el.innerHTML='<div>今日答對 <strong style="color:var(--correct)">'+correct+'</strong> / '+goal+' 題</div>'
     +'<div style="background:var(--bg);height:6px;border-radius:3px;margin:6px 0;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,var(--correct),#34d399);transition:width .4s"></div></div>'
     +'<div>連續練習 <strong style="color:#f59e0b">'+streak+'</strong> 天 '+(streak>=7?'&#128293;':'')+'</div>';
 }
@@ -1703,150 +1619,56 @@ window.addEventListener('appinstalled',function(){
   if(btn) btn.style.display='none';
 });
 
-// ─── Essay mode ──────────────────────────────────────────────────────
-var ESSAY_QUESTIONS=[];
-var currentEssayId=null;
-var GRADER_URL='https://insurance-exam-grader.davidyoudavid.workers.dev/grade';
+// ─── 讀書資料 ──────────────────────────
+var STUDY_DOCS=null, currentStudyId=null;
+var LS_STUDY_LAST='ins_study_last_v1';
 
-function loadEssays(){
-  return fetch('essays.json',{cache:'no-cache'}).then(function(r){return r.json();});
-}
-function buildEssayList(){
-  var el=document.getElementById('essay-list');
-  el.innerHTML='';
-  var results=loadD(LS_ESSAY_RESULTS);
-  ESSAY_QUESTIONS.forEach(function(q){
-    var scored=results[q.id];
-    var mark=scored?' <span style="color:var(--correct);font-weight:700">'+scored.totalScore+'/25</span>':'';
-    var div=document.createElement('div');
-    div.className='essay-list-item'+(q.id===currentEssayId?' active':'');
-    div.innerHTML='<div class="essay-list-item-meta">民國 '+q.year+' ｜ '+q.section+'</div>'
-      +'<div class="essay-list-item-topic">'+q.topic+mark+'</div>';
-    div.onclick=(function(id){return function(){selectEssay(id);};})(q.id);
-    el.appendChild(div);
-  });
-}
-function selectEssay(id){
-  currentEssayId=id;
-  var q=ESSAY_QUESTIONS.find(function(x){return x.id===id;});
-  if(!q) return;
-  document.getElementById('essay-empty').style.display='none';
-  document.getElementById('essay-question-card').style.display='block';
-  document.getElementById('essay-answer-card').style.display='block';
-  document.getElementById('essay-meta-year').textContent='民國 '+q.year+' 年';
-  document.getElementById('essay-meta-topic').textContent=q.section+' ｜ '+q.topic;
-  document.getElementById('essay-question-text').textContent=q.question;
-  document.getElementById('essay-hints').innerHTML='<strong>&#128161; 提示：</strong>'+(q.hints||[]).join(' ｜ ');
-  var drafts=loadD(LS_ESSAY_DRAFTS);
-  var ta=document.getElementById('essay-textarea');
-  ta.value=drafts[id]||'';
-  updateWordCount();
-  var results=loadD(LS_ESSAY_RESULTS);
-  if(results[id]) showEssayResult(results[id]);
-  else document.getElementById('essay-result').style.display='none';
-  buildEssayList();
-}
-function updateWordCount(){
-  var ta=document.getElementById('essay-textarea');
-  var wc=document.getElementById('essay-wordcount');
-  if(wc&&ta) wc.textContent=(ta.value||'').length;
-}
-function saveEssayDraft(){
-  if(!currentEssayId) return;
-  var ta=document.getElementById('essay-textarea');
-  var drafts=loadD(LS_ESSAY_DRAFTS);
-  drafts[currentEssayId]=ta.value;
-  saveD(LS_ESSAY_DRAFTS,drafts);
-}
-function clearEssayDraft(){
-  if(!currentEssayId) return;
-  if(!confirm('確定要清空此題作答草稿？')) return;
-  var drafts=loadD(LS_ESSAY_DRAFTS);
-  delete drafts[currentEssayId];
-  saveD(LS_ESSAY_DRAFTS,drafts);
-  document.getElementById('essay-textarea').value='';
-  updateWordCount();
-}
-function submitEssay(){
-  if(!currentEssayId) return;
-  var q=ESSAY_QUESTIONS.find(function(x){return x.id===currentEssayId;});
-  var answer=document.getElementById('essay-textarea').value.trim();
-  if(answer.length<50){ alert('作答至少 50 字'); return; }
-  var btn=document.getElementById('essay-grade-btn');
-  btn.disabled=true;
-  btn.innerHTML='&#9203; 批改中...';
-  fetch(GRADER_URL,{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({question:q.question,answer:answer})
-  }).then(function(r){return r.json().then(function(j){return {ok:r.ok,data:j};});})
-  .then(function(res){
-    btn.disabled=false;
-    btn.innerHTML='&#129504; 送交 AI 批改';
-    if(!res.ok){ alert('批改失敗：'+(res.data.error||'未知錯誤')); return; }
-    var results=loadD(LS_ESSAY_RESULTS);
-    results[currentEssayId]=res.data;
-    saveD(LS_ESSAY_RESULTS,results);
-    showEssayResult(res.data);
-    buildEssayList();
-  }).catch(function(err){
-    btn.disabled=false;
-    btn.innerHTML='&#129504; 送交 AI 批改';
-    alert('批改失敗：'+err.message);
-  });
-}
-function showEssayResult(r){
-  var el=document.getElementById('essay-result');
-  el.style.display='block';
-  function ul(items,cls){ return '<ul class="'+cls+'">'+(items||[]).map(function(i){return '<li>'+esc(i)+'</li>';}).join('')+'</ul>'; }
-  var b=r.breakdown||{};
-  el.innerHTML='<div style="display:flex;align-items:flex-end;gap:8px;margin-bottom:4px">'
-    +'<div class="essay-score-big">'+r.totalScore+'</div><div class="essay-score-max">/ 25</div>'
-    +'</div>'
-    +'<div class="essay-breakdown">'
-    +'<div class="essay-breakdown-cell"><div class="lbl">結構</div><div class="val">'+(b.structure||0)+'<span class="max">/5</span></div></div>'
-    +'<div class="essay-breakdown-cell"><div class="lbl">法條引用</div><div class="val">'+(b.citations||0)+'<span class="max">/8</span></div></div>'
-    +'<div class="essay-breakdown-cell"><div class="lbl">要件涵攝</div><div class="val">'+(b.reasoning||0)+'<span class="max">/8</span></div></div>'
-    +'<div class="essay-breakdown-cell"><div class="lbl">學理論理</div><div class="val">'+(b.doctrine||0)+'<span class="max">/3</span></div></div>'
-    +'<div class="essay-breakdown-cell"><div class="lbl">結論扣題</div><div class="val">'+(b.conclusion||0)+'<span class="max">/1</span></div></div>'
-    +'</div>'
-    +'<div class="essay-feedback">'
-    +'<h4>&#9989; 優點</h4>'+ul(r.strengths,'strengths')
-    +'<h4>&#10060; 缺漏</h4>'+ul(r.weaknesses,'weaknesses')
-    +'<h4>&#128161; 建議</h4>'+ul(r.suggestions,'suggestions')
-    +'<h4>&#127919; 應提但未提的重點</h4>'+ul(r.missedKeyPoints,'missed')
-    +'</div>';
-  el.scrollIntoView({behavior:'smooth',block:'start'});
-}
-function toggleEssayView(){
-  var ev=document.getElementById('essay-view');
-  var layout=document.querySelector('.layout');
-  var btn=document.getElementById('essay-toggle');
-  if(ev.classList.contains('show')){
-    ev.classList.remove('show');
-    layout.style.display='flex';
-    btn.innerHTML='&#128221; 申論練習';
-  } else {
-    ev.classList.add('show');
-    layout.style.display='none';
-    btn.innerHTML='&#128214; 選擇題練習';
-    if(!ESSAY_QUESTIONS.length){
-      loadEssays().then(function(data){
-        ESSAY_QUESTIONS=data;
-        buildEssayList();
-      }).catch(function(err){
-        document.getElementById('essay-list').innerHTML='<div style="color:var(--wrong);padding:10px">題庫載入失敗</div>';
-      });
+function buildStudyList(){
+  var el=document.getElementById('study-list'); el.innerHTML='';
+  var lastGroup=null;
+  STUDY_DOCS.forEach(function(d){
+    if(d.group!==lastGroup){
+      var g=document.createElement('div'); g.className='study-group'; g.textContent=d.group;
+      el.appendChild(g); lastGroup=d.group;
     }
-  }
+    var it=document.createElement('div');
+    it.className='study-item'+(d.id===currentStudyId?' active':'');
+    it.innerHTML=esc(d.title)+'<div class="sub">'+esc(d.sub)+'</div>';
+    it.onclick=(function(id){return function(){selectStudyDoc(id);};})(d.id);
+    el.appendChild(it);
+  });
 }
-document.addEventListener('input',function(e){
-  if(e.target&&e.target.id==='essay-textarea'){
-    updateWordCount();
-    clearTimeout(window._essayDraftTimer);
-    window._essayDraftTimer=setTimeout(saveEssayDraft,400);
-  }
-});
+function selectStudyDoc(id){
+  var d=null,i;
+  for(i=0;i<STUDY_DOCS.length;i++) if(STUDY_DOCS[i].id===id) d=STUDY_DOCS[i];
+  if(!d) return;
+  currentStudyId=id;
+  try{localStorage.setItem(LS_STUDY_LAST,id);}catch(e){}
+  document.getElementById('study-doc').innerHTML=d.html;
+  document.getElementById('study-toc').innerHTML=(d.toc||[]).map(function(t){
+    return '<a class="lv'+t.lv+'" href="#'+t.id+'">'+esc(t.t)+'</a>';
+  }).join('');
+  buildStudyList();
+  window.scrollTo(0,0);
+}
+function toggleStudyView(){
+  var v=document.getElementById('study-view');
+  var layout=document.querySelector('.layout');
+  var on=v.className.indexOf('show')<0;
+  v.className=on?'study-view show':'study-view';
+  layout.style.display=on?'none':'';
+  document.getElementById('study-toggle').innerHTML=on?'&#8592; 回練習':'&#128218; 讀書資料';
+  if(!on){ window.scrollTo(0,0); return; }
+  if(STUDY_DOCS){ if(!currentStudyId) selectStudyDoc(STUDY_DOCS[0].id); return; }
+  fetch('study.json',{cache:'no-cache'}).then(function(r){return r.json();}).then(function(d){
+    STUDY_DOCS=d;
+    var last=null,ok=false,i; try{last=localStorage.getItem(LS_STUDY_LAST);}catch(e){}
+    for(i=0;i<d.length;i++) if(d[i].id===last) ok=true;
+    selectStudyDoc(ok?last:d[0].id);
+  }).catch(function(){
+    document.getElementById('study-doc').innerHTML='<p>讀書資料載入失敗，請檢查網路後重試。</p>';
+  });
+}
 
 // ─── Service worker with update prompt ───────────────────────────────
 function showUpdateToast(reg){

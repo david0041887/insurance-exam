@@ -1,7 +1,7 @@
 {
-  "name": "保險經紀代理考古題練習",
-  "short_name": "保險考古題",
-  "description": "民國 99-114 年保險經紀人/代理人考古題練習",
+  "name": "保險經紀人考古題練習",
+  "short_name": "保險經紀人",
+  "description": "民國 99-115 年保險經紀人考古題練習與讀書資料",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

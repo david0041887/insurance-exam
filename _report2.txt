@@ -1,0 +1,69 @@
+Total questions: 3995
+True duplicate groups (same Q+options): 1
+True duplicates to remove: 1
+
+=== TRUE DUPLICATES ===
+[2 copies] years=[111, 107] sections=['財產風險管理概要', '人身風險管理概要']
+  answers=['C', 'C']
+  Q: 根據能量釋放理論,若能控制能量溢釋的數量,則可以避免或減少意外事故的發生。請問以車禍為例,下列何種對策可有效控制能量的累積?
+
+=== CONFLICTING ANSWERS (same Q, different answers) ===
+Count: 0
+=== 保險法規概要 section analysis ===
+保險法規概要 questions: 1173
+Year distribution:
+  99: 39
+  100: 40
+  101: 80
+  102: 79
+  103: 78
+  104: 79
+  105: 78
+  106: 76
+  107: 75
+  108: 79
+  109: 79
+  110: 79
+  111: 78
+  112: 80
+  113: 76
+  114: 78
+
+=== Questions with specific numbers/values (potential outdated provisions) ===
+
+[遲延利息舊規定(應為一分)] - 2 questions
+  year=99 section=保險經紀人保險法規概要
+  Q: 保險人因可歸責於自己之事由致未在約定期限給付賠償金額,保險人應否給付遲延利息?
+  answer=D
+  year=115 section=保險法規概要(依現行法令模擬測驗)
+  Q: 依保險法規定，保險人因可歸責於自己之事由致未在規定期限內給付賠償金額者，應給付遲延利息為年利幾分？
+  answer=C
+
+[遲延利息舊規定(應為一分)] - 1 questions
+  year=99 section=保險經紀人保險法規概要
+  Q: 保險人因可歸責於自己之事由致未在約定期限給付賠償金額,保險人應否給付遲延利息?
+  answer=D
+
+[通知期限可能過時] - 1 questions
+  year=101 section=保險經紀人保險法規概要
+  Q: 有關保險法所規定各項通知之期限,下列何者正確?
+  answer=A
+
+[停效期間可能過時] - 20 questions
+  year=113 section=保險經紀人保險法規概要
+  Q: 業務員應自登錄後多久期間定期參加所屬公司辦理之教育訓練?
+  answer=C
+  year=113 section=保險經紀人保險法規概要
+  Q: 甲為 A 保險股份有限公司(下稱 A 公司)業務員,甲為賺取信用卡發卡銀行之高額刷卡回饋金,向熟識之保戶索取保戶網路投保或網路保險服務之帳號及密碼,甲明知其非為
+  answer=B
+  year=113 section=保險經紀人保險法規概要
+  Q: 業務員不服受停止招攬登錄處分者,得以書面具明理由向原處分公司提出申復,原處分公司並應將復查結果通知業務員,業務員對復查結果有異議者,得於收到復查結果之日起多少時
+  answer=C
+
+[可能過時條文] - 2 questions
+  year=104 section=保險經紀人保險法規概要
+  Q: 依 104 年 2 月 4 日修正之保險法,資本適足率等級為嚴重不足,且其或其負責人未依主管機關規定期限完成增資、財務或業務改善計畫或合併者,應自期限屆滿之次日
+  answer=D
+  year=104 section=保險經紀人保險法規概要
+  Q: 人壽保險之保險費到期未交付者,除契約另有訂定外,經催告到達後屆幾日仍不交付時, 保險契約之效力停止?
+  answer=B
