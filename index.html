@@ -137,6 +137,29 @@
   .study-doc .dl a{display:inline-block;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:7px 15px;font-size:12px;font-weight:600}
   .study-doc .links li{margin:8px 0}
   .study-doc .muted{color:var(--text3);font-size:11px}
+  /* GUESS / 答案分布 */
+  .gz-hero{display:flex;align-items:baseline;gap:10px;margin:2px 0 4px}
+  .gz-hero b{font-size:44px;font-weight:800;color:var(--accent);line-height:1;letter-spacing:-1px}
+  .gz-hero .pct{font-size:19px;font-weight:700;color:var(--text)}
+  .gz-hero .cap{font-size:11px;color:var(--text3)}
+  .gz-plot{position:relative;margin:16px 0 6px}
+  .gz-row{display:flex;align-items:center;gap:9px;margin-bottom:2px}
+  .gz-key{width:16px;font-size:12px;font-weight:700;color:var(--text2);text-align:center;flex-shrink:0}
+  .gz-track{flex:1;min-width:0;height:18px;position:relative}
+  .gz-bar{height:18px;border-radius:0 4px 4px 0;background:var(--text2);transition:width .5s cubic-bezier(.2,.8,.2,1)}
+  .gz-bar.hi{background:var(--accent)}
+  .gz-val{width:96px;flex-shrink:0;font-size:11px;color:var(--text2);font-variant-numeric:tabular-nums}
+  .gz-val b{color:var(--text);font-size:12.5px}
+  .gz-base{position:absolute;top:-4px;bottom:-4px;width:1px;background:var(--border)}
+  .gz-baselbl{position:absolute;top:100%;margin-top:3px;transform:translateX(-50%);font-size:9.5px;color:var(--text3);white-space:nowrap}
+  .gz-note{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:11px 14px;margin-top:20px;font-size:11.5px;line-height:1.85;color:var(--text2)}
+  .gz-note b{color:var(--text)}
+  .gz-tbl{width:100%;border-collapse:collapse;font-size:11.5px;margin-top:14px}
+  .gz-tbl th{color:var(--text3);font-weight:600;text-align:right;padding:5px 7px;font-size:10px;letter-spacing:.5px}
+  .gz-tbl th:first-child{text-align:left}
+  .gz-tbl td{padding:6px 7px;text-align:right;border-top:1px solid var(--border);color:var(--text2);font-variant-numeric:tabular-nums}
+  .gz-tbl td:first-child{text-align:left;color:var(--text2)}
+  .gz-tbl td.top{color:var(--accent);font-weight:700}
   .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:1000;padding:20px}
   .modal-backdrop.show{display:flex}
   .modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:28px;max-width:560px;width:100%;max-height:80vh;overflow-y:auto}
@@ -352,6 +375,7 @@
     <div class="panel">
       <div class="panel-title">&#128736;&#65039; 工具</div>
       <button onclick="showStatsModal()" class="tool-btn">&#128200; 學習統計</button>
+      <button onclick="showGuessModal()" class="tool-btn">&#127922; 答案分布</button>
       <button onclick="showShortcuts()" class="tool-btn">&#9000;&#65039; 快捷鍵 (?)</button>
       <button onclick="triggerInstall()" class="tool-btn" id="pwa-install-btn" style="display:none">&#128241; 安裝為 App</button>
       <button onclick="exportData()" class="tool-btn">&#128228; 匯出進度</button>
@@ -456,6 +480,13 @@
   <main class="study-main">
     <div class="study-doc" id="study-doc">載入中…</div>
   </main>
+</div>
+<div class="modal-backdrop" id="guess-modal" onclick="if(event.target===this)hideGuessModal()">
+  <div class="modal">
+    <button class="modal-close" onclick="hideGuessModal()">&times;</button>
+    <h3>&#127922; 答案分布：不會寫時該猜哪個？</h3>
+    <div id="guess-modal-content"></div>
+  </div>
 </div>
 <div class="modal-backdrop" id="shortcuts-modal" onclick="if(event.target===this)hideShortcuts()">
   <div class="modal">
@@ -1361,6 +1392,7 @@ document.addEventListener('keydown',function(e){
   if(e.key==='Escape'){
     hideShortcuts();
     if(typeof hideStatsModal==='function') hideStatsModal();
+    if(typeof hideGuessModal==='function') hideGuessModal();
     return;
   }
   if(inField) return;
@@ -1618,6 +1650,69 @@ window.addEventListener('appinstalled',function(){
   var btn=document.getElementById('pwa-install-btn');
   if(btn) btn.style.display='none';
 });
+
+// ─── 答案分布（猜題參考）────────────────────
+function answerDist(qs){
+  var c={A:0,B:0,C:0,D:0}, n=0;
+  qs.forEach(function(q){
+    var a=String(q.answer||'');
+    if(a.length===1 && c.hasOwnProperty(a)){ c[a]++; n++; }   // 只統計單一答案題
+  });
+  return {c:c, n:n};
+}
+function showGuessModal(){
+  var all=answerDist(ALL_QUESTIONS), n=all.n, c=all.c;
+  if(!n){ return; }
+  var keys=['A','B','C','D'];
+  var pct={}; keys.forEach(function(k){ pct[k]=c[k]/n*100; });
+  var top=keys.reduce(function(a,b){ return pct[a]>=pct[b]?a:b; });
+  var low=keys.reduce(function(a,b){ return pct[a]<=pct[b]?a:b; });
+  // 卡方檢定 df=3
+  var e=n/4, chi=0;
+  keys.forEach(function(k){ chi+=Math.pow(c[k]-e,2)/e; });
+  var sig = chi>16.27?'p &lt; 0.001':(chi>11.34?'p &lt; 0.01':(chi>7.81?'p &lt; 0.05':'不顯著'));
+  var real = chi>7.81;
+  var max=Math.max.apply(null,keys.map(function(k){return pct[k];}));
+  var scale=function(v){ return (v/ (max*1.18) *100); };
+
+  var html='<div class="gz-hero"><b>'+top+'</b><span class="pct">'+pct[top].toFixed(1)+'%</span>'
+    +'<span class="cap">歷年最常出現的答案</span></div>';
+  html+='<div class="gz-plot">';
+  keys.forEach(function(k){
+    html+='<div class="gz-row" title="'+k+'：'+c[k]+' 題，占 '+pct[k].toFixed(2)+'%">'
+      +'<div class="gz-key">'+k+'</div>'
+      +'<div class="gz-track"><div class="gz-bar'+(k===top?' hi':'')+'" style="width:'+scale(pct[k]).toFixed(1)+'%"></div></div>'
+      +'<div class="gz-val"><b>'+pct[k].toFixed(1)+'%</b> · '+c[k]+' 題</div></div>';
+  });
+  // 25% 隨機基準線（位於 track 區，左 16+9 右 96+9）
+  html+='<div class="gz-base" style="left:calc(25px + (100% - 130px) * '+(scale(25)/100).toFixed(4)+')">'
+     +'<span class="gz-baselbl">隨機 25%</span></div>';
+  html+='</div>';
+
+  html+='<div class="gz-note">統計 <b>'+n.toLocaleString()+'</b> 題單一答案考題（已排除多答案題）。'
+    +'<br>卡方檢定 <b>χ² = '+chi.toFixed(1)+'</b>（df=3），'+sig+'——'
+    +(real?'分布確實<b>不均勻</b>，不是隨機波動。':'尚無法認定偏好，猜哪個都一樣。')
+    +'<br><br><b>實際效益（每 40 題全猜同一個）</b><br>'
+    +'猜 <b>'+top+'</b> 約對 <b>'+(pct[top]*0.4).toFixed(1)+'</b> 題　·　純隨機 10 題　·　猜 <b>'+low+'</b> 約對 <b>'+(pct[low]*0.4).toFixed(1)+'</b> 題<br>'
+    +'<span style="color:var(--text3)">→ 猜 '+top+' 比隨機約多 <b>'+((pct[top]-25)*0.4).toFixed(1)+'</b> 題；這是小優勢，不是答題策略。會寫的題一定比猜重要。</span></div>';
+
+  // 依科目
+  var secs={}; ALL_QUESTIONS.forEach(function(q){ (secs[q.section]=secs[q.section]||[]).push(q); });
+  html+='<table class="gz-tbl"><thead><tr><th>科目</th><th>A</th><th>B</th><th>C</th><th>D</th><th>最高</th></tr></thead><tbody>';
+  Object.keys(secs).sort().forEach(function(sec){
+    var d=answerDist(secs[sec]); if(!d.n) return;
+    var p={}; keys.forEach(function(k){ p[k]=d.c[k]/d.n*100; });
+    var t=keys.reduce(function(a,b){ return p[a]>=p[b]?a:b; });
+    html+='<tr><td>'+esc(sec)+'</td>';
+    keys.forEach(function(k){ html+='<td'+(k===t?' class="top"':'')+'>'+p[k].toFixed(1)+'</td>'; });
+    html+='<td class="top">'+t+'</td></tr>';
+  });
+  html+='</tbody></table>';
+
+  document.getElementById('guess-modal-content').innerHTML=html;
+  document.getElementById('guess-modal').className='modal-backdrop show';
+}
+function hideGuessModal(){ document.getElementById('guess-modal').className='modal-backdrop'; }
 
 // ─── 讀書資料 ──────────────────────────
 var STUDY_DOCS=null, currentStudyId=null;
