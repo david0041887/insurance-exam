@@ -166,6 +166,30 @@
   .exp-box .exp-src{display:inline-block;margin-top:9px;padding:4px 10px;background:var(--bg);border:1px solid var(--border);border-radius:7px;font-size:11.5px;color:var(--text2)}
   .exp-box .exp-warn{display:block;margin-top:9px;color:#fbbf24;font-size:11.5px;font-weight:600}
   .exp-loading{color:var(--text3);font-size:12px;padding:10px 0}
+  /* AUTH GATE */
+  body.gated{overflow:hidden}
+  body.gated .header,body.gated .layout,body.gated .study-view{filter:blur(6px);pointer-events:none;user-select:none}
+  #auth-gate{position:fixed;inset:0;z-index:2000;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(15,17,23,.86);backdrop-filter:blur(8px)}
+  [data-theme="light"] #auth-gate{background:rgba(245,247,251,.9)}
+  .gate-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:40px 34px;max-width:400px;width:100%;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.45)}
+  .gate-logo{font-size:40px;margin-bottom:12px}
+  .gate-card h1{font-size:21px;color:var(--text);margin-bottom:8px}
+  .gate-card p{font-size:13px;color:var(--text2);line-height:1.8}
+  .gate-sub{margin-bottom:22px}
+  .gate-card code{background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:1px 6px;font-size:12px;color:var(--accent2)}
+  .gate-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;margin:18px 0 12px;padding:12px 18px;background:#fff;color:#1f2340;border:none;border-radius:11px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;transition:transform .15s,box-shadow .15s}
+  .gate-btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(0,0,0,.28)}
+  .gate-btn.ghost{background:transparent;color:var(--text2);border:1px solid var(--border);font-weight:600}
+  .gate-note{font-size:11px;color:var(--text3);margin-top:4px}
+  .gate-err{color:var(--wrong);font-size:12px;margin-top:8px}
+  /* USER CHIP */
+  .user-chip{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:4px 6px 4px 5px;font-size:12px;color:var(--text2)}
+  .user-chip img,.user-chip .user-ini{width:24px;height:24px;border-radius:50%;flex-shrink:0}
+  .user-chip .user-ini{background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px}
+  .user-chip .user-name{max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
+  .user-chip .user-admin{background:var(--accent2);color:#fff;border-radius:12px;padding:3px 9px;font-size:10.5px;font-weight:700;text-decoration:none}
+  .user-chip .user-out{background:transparent;border:none;color:var(--text3);font-size:11px;cursor:pointer;font-family:inherit;padding:3px 7px;border-radius:10px}
+  .user-chip .user-out:hover{color:var(--wrong);background:var(--bg)}
   .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:1000;padding:20px}
   .modal-backdrop.show{display:flex}
   .modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:28px;max-width:560px;width:100%;max-height:80vh;overflow-y:auto}
@@ -287,6 +311,8 @@
     .logo-text{font-size:14px}
     .logo-sub{display:none}
     .logo-icon{width:30px;height:30px;font-size:15px}
+    .user-chip .user-name{display:none}
+    .gate-card{padding:30px 22px}
     .study-view{flex-direction:column;padding:10px;gap:12px}
     .study-sidebar{width:100%}
     .study-nav{position:static;max-height:none}
@@ -301,6 +327,7 @@
 </style>
 </head>
 <body>
+<div id="auth-gate"></div>
 <header class="header">
   <div style="display:flex;align-items:center;gap:16px;flex:1;min-width:0">
     <div class="logo">
@@ -1893,5 +1920,8 @@ if('serviceWorker' in navigator){
   });
 }
 </script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script src="auth.js"></script>
 </body>
 </html>

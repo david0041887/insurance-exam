@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>後台管理 — 保險經紀人考古題</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap');
+  :root, [data-theme="dark"]{
+    --bg:#0f1117;--surface:#1a1d27;--surface2:#22263a;--border:#2e3250;
+    --accent:#4f6ef7;--accent2:#7c3aed;--correct:#10b981;--wrong:#ef4444;
+    --text:#e8eaf6;--text2:#8b93c4;--text3:#4a5180;--radius:14px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);font-family:'Noto Sans TC',system-ui,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+  a{color:var(--accent)}
+  .header{display:flex;align-items:center;gap:14px;padding:14px 22px;border-bottom:1px solid var(--border);background:var(--surface);flex-wrap:wrap}
+  .header h1{font-size:16px;font-weight:700}
+  .header .sp{flex:1}
+  .back{font-size:12px;color:var(--text2);text-decoration:none;border:1px solid var(--border);border-radius:9px;padding:6px 12px}
+  .back:hover{border-color:var(--accent);color:var(--accent)}
+  .wrap{max-width:1240px;margin:0 auto;padding:22px 16px 60px}
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:22px}
+  .tile{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px}
+  .tile .lbl{font-size:10.5px;letter-spacing:1px;color:var(--text3);font-weight:700;margin-bottom:7px}
+  .tile .val{font-size:27px;font-weight:800;color:var(--text);line-height:1;font-variant-numeric:tabular-nums}
+  .tile .sub{font-size:11px;color:var(--text3);margin-top:6px}
+  .bar{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+  .bar input{flex:1;min-width:190px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:9px 13px;color:var(--text);font-family:inherit;font-size:13px}
+  .bar input:focus{outline:none;border-color:var(--accent)}
+  .bar select{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:9px 11px;color:var(--text2);font-family:inherit;font-size:12.5px}
+  .tblwrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow-x:auto}
+  table{border-collapse:collapse;width:100%;font-size:12.5px;min-width:900px}
+  th{color:var(--text3);font-weight:700;font-size:10.5px;letter-spacing:.8px;text-align:right;padding:11px 12px;border-bottom:1px solid var(--border);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  th.l,td.l{text-align:left}
+  td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  tr:last-child td{border-bottom:none}
+  tr.blocked td{opacity:.5}
+  .who{display:flex;align-items:center;gap:9px}
+  .who img,.who .ini{width:28px;height:28px;border-radius:50%;flex-shrink:0}
+  .who .ini{background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px}
+  .who b{color:var(--text);font-weight:600;display:block;font-size:12.5px}
+  .who span{color:var(--text3);font-size:10.5px}
+  .pill{display:inline-block;padding:3px 9px;border-radius:12px;font-size:10.5px;font-weight:700}
+  .pill.ok{background:rgba(16,185,129,.15);color:var(--correct);border:1px solid rgba(16,185,129,.35)}
+  .pill.no{background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.4)}
+  .pill.adm{background:rgba(124,58,237,.18);color:#a78bfa;border:1px solid rgba(124,58,237,.4)}
+  .act{background:transparent;border:1px solid var(--border);border-radius:9px;padding:5px 12px;color:var(--text2);font-size:11.5px;font-family:inherit;cursor:pointer;white-space:nowrap}
+  .act:hover{border-color:var(--wrong);color:#f87171}
+  .act.un:hover{border-color:var(--correct);color:var(--correct)}
+  .act:disabled{opacity:.35;cursor:not-allowed}
+  .msg{padding:44px 20px;text-align:center;color:var(--text3);font-size:13px}
+  .err{color:#f87171}
+  details.secs{margin-top:4px}
+  details.secs summary{cursor:pointer;color:var(--text3);font-size:10.5px;list-style:none}
+  details.secs summary::-webkit-details-marker{display:none}
+  details.secs div{font-size:10.5px;color:var(--text3);line-height:1.7;margin-top:4px}
+  @media(max-width:768px){ .wrap{padding:14px 10px 50px} .header{padding:11px 14px} }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>&#128736;&#65039; 後台管理</h1>
+  <div class="sp"></div>
+  <span id="me" style="font-size:12px;color:var(--text2)"></span>
+  <a class="back" href="./">&#8592; 回練習</a>
+  <button class="act" id="signout">登出</button>
+</div>
+<div class="wrap">
+  <div class="tiles" id="tiles"></div>
+  <div class="bar">
+    <input id="q" type="search" placeholder="搜尋姓名或 Email…">
+    <select id="filter">
+      <option value="all">全部帳號</option>
+      <option value="active">啟用中</option>
+      <option value="blocked">已停用</option>
+      <option value="admin">管理員</option>
+    </select>
+    <select id="sort">
+      <option value="last">最近上線</option>
+      <option value="answered">作答數</option>
+      <option value="accuracy">正確率</option>
+      <option value="created">註冊時間</option>
+    </select>
+  </div>
+  <div class="tblwrap"><div class="msg" id="state">載入中…</div><table id="tbl" style="display:none">
+    <thead><tr>
+      <th class="l">使用者</th><th>作答</th><th>正確率</th><th>錯題池</th>
+      <th>連續</th><th>註冊</th><th>最後上線</th><th>狀態</th><th></th>
+    </tr></thead><tbody id="rows"></tbody>
+  </table></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script>
+(function(){
+'use strict';
+var SB=null, ME=null, DATA=[];
+function el(id){return document.getElementById(id);}
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function fail(m){ el('state').innerHTML='<span class="err">'+esc(m)+'</span>'; el('state').style.display=''; el('tbl').style.display='none'; }
+function fmt(d){
+  if(!d) return '—';
+  var t=new Date(d), now=new Date(), diff=(now-t)/1000;
+  if(diff<60) return '剛剛';
+  if(diff<3600) return Math.floor(diff/60)+' 分前';
+  if(diff<86400) return Math.floor(diff/3600)+' 小時前';
+  if(diff<86400*30) return Math.floor(diff/86400)+' 天前';
+  return t.getFullYear()+'/'+(t.getMonth()+1)+'/'+t.getDate();
+}
+
+function tiles(rows){
+  var n=rows.length;
+  var blocked=rows.filter(function(r){return r.is_blocked;}).length;
+  var ans=rows.reduce(function(a,r){return a+(r.total_answered||0);},0);
+  var cor=rows.reduce(function(a,r){return a+(r.total_correct||0);},0);
+  var today=new Date(); today.setHours(0,0,0,0);
+  var act=rows.filter(function(r){ return r.last_seen_at && new Date(r.last_seen_at)>=today; }).length;
+  var w=new Date(Date.now()-7*86400000);
+  var wk=rows.filter(function(r){ return r.last_seen_at && new Date(r.last_seen_at)>=w; }).length;
+  el('tiles').innerHTML=
+     tile('總帳號',n,blocked?(blocked+' 個已停用'):'全部啟用中')
+   + tile('今日活躍',act,'過去 7 天 '+wk+' 人')
+   + tile('累計作答',ans.toLocaleString(),'全站')
+   + tile('整體正確率',(ans?Math.round(cor/ans*1000)/10:0)+'%','答對 '+cor.toLocaleString()+' 題');
+}
+function tile(l,v,s){ return '<div class="tile"><div class="lbl">'+esc(l)+'</div><div class="val">'+v+'</div><div class="sub">'+esc(s)+'</div></div>'; }
+
+function render(){
+  var q=el('q').value.trim().toLowerCase();
+  var f=el('filter').value, sort=el('sort').value;
+  var rows=DATA.filter(function(r){
+    if(f==='active'&&r.is_blocked) return false;
+    if(f==='blocked'&&!r.is_blocked) return false;
+    if(f==='admin'&&!r.is_admin) return false;
+    if(q){
+      var hay=((r.full_name||'')+' '+(r.email||'')).toLowerCase();
+      if(hay.indexOf(q)<0) return false;
+    }
+    return true;
+  });
+  rows.sort(function(a,b){
+    if(sort==='answered') return (b.total_answered||0)-(a.total_answered||0);
+    if(sort==='accuracy') return (b.accuracy||0)-(a.accuracy||0);
+    if(sort==='created') return new Date(b.created_at||0)-new Date(a.created_at||0);
+    return new Date(b.last_seen_at||0)-new Date(a.last_seen_at||0);
+  });
+  tiles(DATA);
+  if(!rows.length){ el('state').textContent='沒有符合條件的帳號'; el('state').style.display=''; el('tbl').style.display='none'; return; }
+  el('state').style.display='none'; el('tbl').style.display='';
+  el('rows').innerHTML=rows.map(function(r){
+    var name=r.full_name||r.email||'(未命名)';
+    var av=r.avatar_url
+      ? '<img src="'+esc(r.avatar_url)+'" alt="" referrerpolicy="no-referrer">'
+      : '<span class="ini">'+esc(name.slice(0,1))+'</span>';
+    var secs='';
+    if(r.section_stats && Object.keys(r.section_stats).length){
+      secs='<details class="secs"><summary>各科進度</summary><div>'
+        + Object.keys(r.section_stats).sort().map(function(k){
+            var v=r.section_stats[k];
+            return esc(k)+'：'+v.seen+' 題 / '+v.stars+' 星';
+          }).join('<br>')
+        + '</div></details>';
+    }
+    var isMe = ME && r.id===ME.id;
+    return '<tr'+(r.is_blocked?' class="blocked"':'')+'>'
+      + '<td class="l"><div class="who">'+av+'<div><b>'+esc(name)+'</b><span>'+esc(r.email||'')+'</span>'+secs+'</div></div></td>'
+      + '<td>'+(r.total_answered||0).toLocaleString()+'</td>'
+      + '<td>'+(r.accuracy||0)+'%</td>'
+      + '<td>'+(r.wrong_pool||0)+'</td>'
+      + '<td>'+(r.streak_days||0)+' 天</td>'
+      + '<td>'+fmt(r.created_at)+'</td>'
+      + '<td>'+fmt(r.last_seen_at)+'</td>'
+      + '<td>'+(r.is_admin?'<span class="pill adm">管理員</span> ':'')
+             +(r.is_blocked?'<span class="pill no">已停用</span>':'<span class="pill ok">啟用中</span>')+'</td>'
+      + '<td>'+(isMe
+          ? '<button class="act" disabled title="不能鎖自己">本人</button>'
+          : '<button class="act'+(r.is_blocked?' un':'')+'" data-id="'+esc(r.id)+'" data-b="'+(r.is_blocked?1:0)+'">'
+            +(r.is_blocked?'解除停用':'停用帳號')+'</button>')+'</td>'
+      + '</tr>';
+  }).join('');
+  Array.prototype.forEach.call(document.querySelectorAll('#rows .act[data-id]'),function(b){
+    b.onclick=function(){ toggleBlock(b.dataset.id, b.dataset.b==='1'); };
+  });
+}
+
+function toggleBlock(id, currentlyBlocked){
+  var row=DATA.filter(function(r){return r.id===id;})[0];
+  var who=(row&&(row.full_name||row.email))||id;
+  var note=null;
+  if(!currentlyBlocked){
+    note=prompt('停用「'+who+'」的帳號？\n可填入原因（選填，會顯示給該使用者）：','');
+    if(note===null) return;
+  } else if(!confirm('解除停用「'+who+'」？')) return;
+  SB.from('profiles')
+    .update({is_blocked:!currentlyBlocked, blocked_note: currentlyBlocked?null:(note||null)})
+    .eq('id',id)
+    .then(function(r){
+      if(r.error){ alert('操作失敗：'+r.error.message); return; }
+      load();
+    });
+}
+
+function load(){
+  SB.from('admin_overview').select('*').then(function(r){
+    if(r.error){ fail('讀取失敗：'+r.error.message); return; }
+    DATA=r.data||[];
+    render();
+  });
+}
+
+function boot(){
+  if(!window.SUPABASE_URL||!window.SUPABASE_ANON_KEY){ fail('尚未在 config.js 設定 Supabase 連線資訊'); return; }
+  SB=window.supabase.createClient(window.SUPABASE_URL,window.SUPABASE_ANON_KEY);
+  el('signout').onclick=function(){ SB.auth.signOut().then(function(){ location.href='./'; }); };
+  ['q','filter','sort'].forEach(function(id){ el(id).addEventListener('input',render); });
+  SB.auth.getSession().then(function(r){
+    var s=r.data&&r.data.session;
+    if(!s){ location.href='./'; return; }
+    SB.from('profiles').select('*').eq('id',s.user.id).maybeSingle().then(function(p){
+      if(p.error||!p.data){ fail('無法讀取帳號資料'); return; }
+      if(!p.data.is_admin){ fail('這個帳號沒有後台權限'); return; }
+      ME=p.data;
+      el('me').textContent=(p.data.full_name||p.data.email||'');
+      load();
+    });
+  });
+}
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();
+})();
+</script>
+</body>
+</html>
