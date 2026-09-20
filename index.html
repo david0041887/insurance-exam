@@ -160,6 +160,12 @@
   .gz-tbl td{padding:6px 7px;text-align:right;border-top:1px solid var(--border);color:var(--text2);font-variant-numeric:tabular-nums}
   .gz-tbl td:first-child{text-align:left;color:var(--text2)}
   .gz-tbl td.top{color:var(--accent);font-weight:700}
+  /* EXPLANATION / 解析 */
+  .exp-box{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent2);border-radius:0 12px 12px 0;padding:15px 18px;margin-top:2px;font-size:13.5px;line-height:1.9;color:var(--text2);white-space:pre-wrap;word-break:break-word}
+  .exp-box .exp-head{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:700;letter-spacing:1px;color:var(--accent2);margin-bottom:8px}
+  .exp-box .exp-src{display:inline-block;margin-top:9px;padding:4px 10px;background:var(--bg);border:1px solid var(--border);border-radius:7px;font-size:11.5px;color:var(--text2)}
+  .exp-box .exp-warn{display:block;margin-top:9px;color:#fbbf24;font-size:11.5px;font-weight:600}
+  .exp-loading{color:var(--text3);font-size:12px;padding:10px 0}
   .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:1000;padding:20px}
   .modal-backdrop.show{display:flex}
   .modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:28px;max-width:560px;width:100%;max-height:80vh;overflow-y:auto}
@@ -439,6 +445,7 @@
         <div class="options" id="q-options"></div>
       </div>
       <div id="bottom-panels">
+      <div id="exp-section"></div>
       <div id="note-section">
         <button class="note-toggle-btn" id="note-toggle-btn" onclick="toggleNote()">&#128221; 新增筆記</button>
         <div id="note-body" class="note-body" style="display:none">
@@ -1318,6 +1325,7 @@ function renderQuestion(){
   if(_noteTa) _noteTa.value=_noteText;
   document.getElementById('btn-prev').disabled=cur===0;
   document.getElementById('btn-next').innerHTML=cur===session.length-1?'完成 ✓':'下一題 →';
+  renderExplanation(q);
 }
 
 function selectAnswer(key){
@@ -1650,6 +1658,66 @@ window.addEventListener('appinstalled',function(){
   var btn=document.getElementById('pwa-install-btn');
   if(btn) btn.style.display='none';
 });
+
+// ─── 解析（按需載入）─────────────────────────
+var EXPL=null, EXPL_STATE=0;   // 0=未載入 1=載入中 2=完成 3=失敗
+function expKey(q){
+  // 與 _build/gen.py 的 qkey 一致：sha1(question|answer) 前 12 碼
+  return sha1Hex(q.question+'|'+String(q.answer)).slice(0,12);
+}
+function loadExplanations(){
+  if(EXPL_STATE===1||EXPL_STATE===2) return Promise.resolve();
+  EXPL_STATE=1;
+  return fetch('explanations.json',{cache:'force-cache'})
+    .then(function(r){ if(!r.ok) throw 0; return r.json(); })
+    .then(function(d){ EXPL=d; EXPL_STATE=2; })
+    .catch(function(){ EXPL_STATE=3; });
+}
+function renderExplanation(q){
+  var el=document.getElementById('exp-section');
+  if(!el) return;
+  if(!answered[cur]){ el.innerHTML=''; return; }
+  function paint(){
+    if(EXPL_STATE!==2||!EXPL){ el.innerHTML=''; return; }
+    var t=EXPL[expKey(q)];
+    if(!t){ el.innerHTML=''; return; }
+    var src='', warn='', body=t;
+    body=body.replace(/\n?⚠[^\n]*/g,function(m){ warn=m.trim(); return ''; });
+    body=body.replace(/\n?法源：([^\n]*)/,function(m,p){ src=p.trim(); return ''; });
+    el.innerHTML='<div class="exp-box"><div class="exp-head">\u{1F4A1} 解析</div>'
+      +esc(body.trim())
+      +(src?'<div class="exp-src">&#128214; '+esc(src)+'</div>':'')
+      +(warn?'<span class="exp-warn">'+esc(warn)+'</span>':'')+'</div>';
+  }
+  if(EXPL_STATE===2) paint();
+  else if(EXPL_STATE===3) el.innerHTML='';
+  else { el.innerHTML='<div class="exp-loading">載入解析中…</div>'; loadExplanations().then(paint); }
+}
+// 極簡 SHA-1（與 Python hashlib.sha1 相容，輸入 UTF-8）
+function sha1Hex(str){
+  function rol(n,s){ return (n<<s)|(n>>>(32-s)); }
+  var utf8=unescape(encodeURIComponent(str));
+  var n=utf8.length, words=[];
+  for(var i=0;i<n;i++) words[i>>2]=(words[i>>2]||0)|(utf8.charCodeAt(i)<<(24-(i%4)*8));
+  words[n>>2]=(words[n>>2]||0)|(0x80<<(24-(n%4)*8));
+  words[((n+8>>6)<<4)+15]=n*8;
+  var w=new Array(80),H=[0x67452301,0xEFCDAB89,0x98BADCFE,0x10325476,0xC3D2E1F0];
+  for(var j=0;j<words.length;j+=16){
+    var a=H[0],b=H[1],c=H[2],d=H[3],e=H[4];
+    for(var t=0;t<80;t++){
+      w[t]= t<16 ? (words[j+t]|0) : rol(w[t-3]^w[t-8]^w[t-14]^w[t-16],1);
+      var f,k;
+      if(t<20){ f=(b&c)|((~b)&d); k=0x5A827999; }
+      else if(t<40){ f=b^c^d; k=0x6ED9EBA1; }
+      else if(t<60){ f=(b&c)|(b&d)|(c&d); k=0x8F1BBCDC; }
+      else { f=b^c^d; k=0xCA62C1D6; }
+      var tmp=(rol(a,5)+f+e+k+w[t])|0;
+      e=d; d=c; c=rol(b,30); b=a; a=tmp;
+    }
+    H[0]=(H[0]+a)|0; H[1]=(H[1]+b)|0; H[2]=(H[2]+c)|0; H[3]=(H[3]+d)|0; H[4]=(H[4]+e)|0;
+  }
+  return H.map(function(x){ return ('00000000'+(x>>>0).toString(16)).slice(-8); }).join('');
+}
 
 // ─── 答案分布（猜題參考）────────────────────
 function answerDist(qs){
