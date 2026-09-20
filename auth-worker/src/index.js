@@ -130,7 +130,16 @@ export default {
           }),
         }).then(r => r.json());
 
-        if (!tok.id_token) return Response.redirect(site + '#err=token_exchange', 302);
+        if (!tok.id_token) {
+          console.log('TOKEN_EXCHANGE_FAILED', JSON.stringify({
+            google_error: tok.error || null,
+            google_desc: tok.error_description || null,
+            redirect_uri_used: redirect,
+            client_id_tail: (env.GOOGLE_CLIENT_ID || '').slice(-28),
+            secret_len: (env.GOOGLE_CLIENT_SECRET || '').length
+          }));
+          return Response.redirect(site + '#err=token_exchange&g=' + encodeURIComponent(tok.error || 'unknown'), 302);
+        }
 
         // id_token 來自 Google 的 TLS 回應，這裡只解 payload
         const claims = JSON.parse(new TextDecoder().decode(b64urlDecode(tok.id_token.split('.')[1])));

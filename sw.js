@@ -1,4 +1,4 @@
-const CACHE = 'ins-exam-v19';
+const CACHE = 'ins-exam-v20';
 const ASSETS = ['./', './index.html', './questions.json', './study.json', './manifest.json', './icon.svg'];
 
 self.addEventListener('install', e => {
@@ -20,6 +20,8 @@ self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
+  // 只處理本站資源；跨網域（登入 API）一律放行，不得快取
+  if (url.origin !== self.location.origin) return;
   const isHTML = req.mode === 'navigate' || req.destination === 'document' ||
                  url.pathname.endsWith('/') || url.pathname.endsWith('.html');
   const isAuth = /(?:config|auth)\.js$/.test(url.pathname) || url.pathname.endsWith('admin.html');
