@@ -106,13 +106,18 @@
   function collectStats() {
     var stats = loadD(LS_STATS), answered = 0, correct = 0;
     for (var k in stats) { answered += (stats[k].answered || 0); correct += (stats[k].correct || 0); }
+    // 各科練習狀況：總題數 / 練過 / 精熟(3星) / 錯題池 / 星數合計
     var sec = {};
     try {
-      var stars = loadD(LS_STARS);
+      var stars = loadD(LS_STARS), wrong = loadD(LS_WRONG);
       (window.ALL_QUESTIONS || []).forEach(function (q, i) {
-        if (stars[i] == null) return;
-        if (!sec[q.section]) sec[q.section] = { seen: 0, stars: 0 };
-        sec[q.section].seen++; sec[q.section].stars += stars[i];
+        var s = sec[q.section] || (sec[q.section] = { total: 0, seen: 0, mastered: 0, wrong: 0, stars: 0 });
+        s.total++;
+        if (stars[i] != null) {
+          s.seen++; s.stars += stars[i];
+          if (stars[i] >= 3) s.mastered++;
+        }
+        if (wrong[i]) s.wrong++;
       });
     } catch (e) {}
     var day = todayStr();

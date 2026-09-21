@@ -1,4 +1,4 @@
-const CACHE = 'ins-exam-v21';
+const CACHE = 'ins-exam-v22';
 const ASSETS = ['./', './index.html', './questions.json', './study.json', './manifest.json', './icon.svg'];
 
 self.addEventListener('install', e => {

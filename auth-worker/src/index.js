@@ -238,6 +238,43 @@ export default {
         return json(req, env, { ok: true });
       }
 
+      // ---- 6b. 後台：單一使用者練習詳情 ----
+      if (path === '/api/admin/user') {
+        const r = await currentUser(req, env);
+        if (r.error) return json(req, env, { error: r.error }, r.status);
+        if (!r.user.is_admin) return json(req, env, { error: 'not_admin' }, 403);
+        const id = url.searchParams.get('id');
+        if (!id) return json(req, env, { error: 'no_id' }, 400);
+        const days = Math.max(7, Math.min(90, parseInt(url.searchParams.get('days') || '30', 10) || 30));
+
+        const user = await env.DB.prepare(
+          `SELECT u.id,u.email,u.name,u.avatar,u.is_admin,u.is_blocked,u.blocked_note,
+                  u.created_at,u.last_seen_at,
+                  COALESCE(s.total_answered,0) AS total_answered,
+                  COALESCE(s.total_correct,0)  AS total_correct,
+                  COALESCE(s.wrong_pool,0)     AS wrong_pool,
+                  COALESCE(s.bookmarks,0)      AS bookmarks,
+                  COALESCE(s.streak_days,0)    AS streak_days,
+                  s.section_stats, s.updated_at
+           FROM users u LEFT JOIN user_stats s ON s.user_id=u.id WHERE u.id=?`
+        ).bind(id).first();
+        if (!user) return json(req, env, { error: 'not_found' }, 404);
+
+        const { results: activity } = await env.DB.prepare(
+          `SELECT day, answered, correct FROM daily_activity
+           WHERE user_id=?1 AND day >= date('now', ?2)
+           ORDER BY day ASC`
+        ).bind(id, `-${days - 1} days`).all();
+
+        const tot = await env.DB.prepare(
+          `SELECT COUNT(*) AS active_days, COALESCE(SUM(answered),0) AS answered,
+                  COALESCE(SUM(correct),0) AS correct, MIN(day) AS first_day, MAX(day) AS last_day
+           FROM daily_activity WHERE user_id=?`
+        ).bind(id).first();
+
+        return json(req, env, { user, activity: activity || [], lifetime: tot, days });
+      }
+
       // ---- 7. 後台：設定／取消管理員 ----
       if (path === '/api/admin/role' && req.method === 'POST') {
         const r = await currentUser(req, env);

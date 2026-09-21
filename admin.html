@@ -58,7 +58,50 @@
   details.secs summary{cursor:pointer;color:var(--text3);font-size:10.5px;list-style:none}
   details.secs summary::-webkit-details-marker{display:none}
   details.secs div{font-size:10.5px;color:var(--text3);line-height:1.7;margin-top:4px}
-  @media(max-width:768px){ .wrap{padding:14px 10px 50px} .header{padding:11px 14px} }
+  tbody tr{cursor:pointer;transition:background .12s}
+  tbody tr:hover td{background:rgba(79,110,247,.05)}
+  .cov{display:flex;align-items:center;gap:8px;justify-content:flex-end}
+  .cov .trk{width:64px;height:6px;background:var(--bg);border-radius:3px;overflow:hidden}
+  .cov .fil{height:100%;background:var(--accent);border-radius:0 3px 3px 0}
+  .cov span{min-width:38px;text-align:right}
+  /* 詳情 */
+  .dlg-bg{position:fixed;inset:0;background:rgba(0,0,0,.66);display:none;align-items:flex-start;justify-content:center;z-index:100;padding:34px 14px;overflow-y:auto}
+  .dlg-bg.show{display:flex}
+  .dlg{background:var(--surface);border:1px solid var(--border);border-radius:18px;width:100%;max-width:860px;padding:24px 26px 26px;position:relative}
+  .dlg-x{position:absolute;top:14px;right:16px;background:transparent;border:none;color:var(--text3);font-size:24px;cursor:pointer;line-height:1}
+  .dlg-x:hover{color:var(--text)}
+  .dh{display:flex;align-items:center;gap:13px;margin-bottom:20px;padding-right:30px}
+  .dh img,.dh .ini{width:46px;height:46px;border-radius:50%;flex-shrink:0}
+  .dh .ini{background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:19px}
+  .dh b{display:block;font-size:17px;color:var(--text)}
+  .dh span{font-size:12px;color:var(--text3)}
+  .dsec{font-size:11px;letter-spacing:1px;color:var(--text3);font-weight:700;margin:22px 0 10px}
+  .dtiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:10px}
+  .dtiles .tile{padding:13px 14px}
+  .dtiles .tile .val{font-size:22px}
+  .chart{position:relative;height:150px;display:flex;align-items:flex-end;gap:2px;padding:0 0 22px;border-bottom:1px solid var(--border)}
+  .chart .col{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:flex-end;height:100%;position:relative}
+  .chart .b{background:var(--accent);border-radius:4px 4px 0 0;min-height:0;width:100%;max-width:24px;margin:0 auto;transition:opacity .12s}
+  .chart .b.zero{background:transparent}
+  .chart .col:hover .b{opacity:.75}
+  .chart .lbl{position:absolute;bottom:-19px;left:50%;transform:translateX(-50%);font-size:9.5px;color:var(--text3);white-space:nowrap}
+  .chart .grid{position:absolute;left:0;right:0;border-top:1px solid var(--border);pointer-events:none}
+  .chart .gl{position:absolute;right:0;transform:translateY(-100%);font-size:9.5px;color:var(--text3);padding-bottom:2px}
+  .tip{position:fixed;pointer-events:none;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:7px 11px;font-size:11.5px;color:var(--text);z-index:200;display:none;box-shadow:0 8px 24px rgba(0,0,0,.4);line-height:1.6}
+  .tip b{color:var(--text)}
+  .tip span{color:var(--text2)}
+  .stbl{width:100%;border-collapse:collapse;font-size:12.5px;min-width:0}
+  .stbl th{text-align:right;font-size:10.5px;color:var(--text3);padding:8px 10px;border-bottom:1px solid var(--border)}
+  .stbl th:first-child,.stbl td:first-child{text-align:left}
+  .stbl td{padding:9px 10px;border-bottom:1px solid var(--border);color:var(--text2);text-align:right;white-space:nowrap}
+  .stbl tr:last-child td{border-bottom:none}
+  .stbl .cov .trk{width:90px}
+  .stbl tbody tr{cursor:default}
+  .stbl tbody tr:hover td{background:none}
+  .weak{color:#f87171;font-weight:700}
+  .note{font-size:11px;color:var(--text3);margin-top:8px;line-height:1.7}
+  @media(max-width:768px){ .wrap{padding:14px 10px 50px} .header{padding:11px 14px}
+    .dlg{padding:20px 16px} .chart .lbl{display:none} .chart .lbl.edge{display:block} }
 </style>
 </head>
 <body>
@@ -88,11 +131,13 @@
   </div>
   <div class="tblwrap"><div class="msg" id="state">載入中…</div><table id="tbl" style="display:none">
     <thead><tr>
-      <th class="l">使用者</th><th>作答</th><th>正確率</th><th>錯題池</th>
+      <th class="l">使用者</th><th>練習進度</th><th>作答</th><th>正確率</th><th>錯題池</th>
       <th>連續</th><th>註冊</th><th>最後上線</th><th>狀態</th><th></th>
     </tr></thead><tbody id="rows"></tbody>
   </table></div>
 </div>
+<div class="dlg-bg" id="dlg"><div class="dlg"><button class="dlg-x" id="dlg-x" aria-label="關閉">&times;</button><div id="dlg-body"></div></div></div>
+<div class="tip" id="tip"></div>
 
 <script src="config.js"></script>
 <script>
@@ -120,6 +165,20 @@ function fmt(d){
   if(diff<86400) return Math.floor(diff/3600)+' \u5c0f\u6642\u524d';
   if(diff<86400*30) return Math.floor(diff/86400)+' \u5929\u524d';
   return t.getFullYear()+'/'+(t.getMonth()+1)+'/'+t.getDate();
+}
+var SEC_TOTAL={'保險法規概要':1247,'保險學概要':1263,'財產風險管理概要':433,
+  '人身風險管理概要':434,'財產保險行銷概要':435,'人身保險行銷概要':435};
+var SEC_ORDER=['保險法規概要','保險學概要','財產風險管理概要','人身風險管理概要','財產保險行銷概要','人身保險行銷概要'];
+function secStats(r){ try{ return r.section_stats? JSON.parse(r.section_stats):{}; }catch(e){ return {}; } }
+function coverage(r){
+  var ss=secStats(r), seen=0, tot=0;
+  SEC_ORDER.forEach(function(k){ var v=ss[k]||{}; seen+=v.seen||0; tot+=v.total||SEC_TOTAL[k]||0; });
+  return tot? seen/tot*100 : 0;
+}
+function pctTxt(v){ return (v<10&&v>0)? v.toFixed(1) : String(Math.round(v)); }
+function covBar(p,w){
+  var v=Math.max(0,Math.min(100,p));
+  return '<div class="cov"><div class="trk"'+(w?' style="width:'+w+'px"':'')+'><div class="fil" style="width:'+v.toFixed(1)+'%"></div></div><span>'+pctTxt(v)+'%</span></div>';
 }
 function acc(r){ return r.total_answered? Math.round(r.total_correct/r.total_answered*1000)/10 : 0; }
 function tile(l,v,s){ return '<div class="tile"><div class="lbl">'+esc(l)+'</div><div class="val">'+v+'</div><div class="sub">'+esc(s)+'</div></div>'; }
@@ -163,16 +222,10 @@ function render(){
     var name=r.name||r.email||'(\u672a\u547d\u540d)';
     var av=r.avatar? '<img src="'+esc(r.avatar)+'" alt="" referrerpolicy="no-referrer">'
                    : '<span class="ini">'+esc(name.slice(0,1))+'</span>';
-    var secs='', ss=null;
-    try{ ss=r.section_stats? JSON.parse(r.section_stats):null; }catch(e){}
-    if(ss&&Object.keys(ss).length){
-      secs='<details class="secs"><summary>\u5404\u79d1\u9032\u5ea6</summary><div>'
-        + Object.keys(ss).sort().map(function(k){return esc(k)+'\uff1a'+ss[k].seen+' \u984c / '+ss[k].stars+' \u661f';}).join('<br>')
-        + '</div></details>';
-    }
     var isMe=ME&&r.id===ME.id;
-    return '<tr'+(r.is_blocked?' class="blocked"':'')+'>'
-      + '<td class="l"><div class="who">'+av+'<div><b>'+esc(name)+'</b><span>'+esc(r.email||'')+'</span>'+secs+'</div></div></td>'
+    return '<tr data-uid="'+esc(r.id)+'"'+(r.is_blocked?' class="blocked"':'')+'>'
+      + '<td class="l"><div class="who">'+av+'<div><b>'+esc(name)+'</b><span>'+esc(r.email||'')+'</span></div></div></td>'
+      + '<td>'+covBar(coverage(r))+'</td>'
       + '<td>'+(r.total_answered||0).toLocaleString()+'</td>'
       + '<td>'+acc(r)+'%</td>'
       + '<td>'+(r.wrong_pool||0)+'</td>'
@@ -186,8 +239,116 @@ function render(){
             +(r.is_blocked?'\u89e3\u9664\u505c\u7528':'\u505c\u7528\u5e33\u865f')+'</button>')+'</td></tr>';
   }).join('');
   Array.prototype.forEach.call(document.querySelectorAll('#rows .act[data-id]'),function(b){
-    b.onclick=function(){ toggleBlock(b.dataset.id,b.dataset.b==='1'); };
+    b.onclick=function(ev){ ev.stopPropagation(); toggleBlock(b.dataset.id,b.dataset.b==='1'); };
   });
+  Array.prototype.forEach.call(document.querySelectorAll('#rows tr[data-uid]'),function(tr){
+    tr.onclick=function(){ openDetail(tr.dataset.uid); };
+  });
+}
+
+// ── 使用者練習詳情 ──────────────────────────────
+function closeDetail(){ el('dlg').className='dlg-bg'; el('tip').style.display='none'; }
+function openDetail(id){
+  el('dlg-body').innerHTML='<div class="msg">載入中…</div>';
+  el('dlg').className='dlg-bg show';
+  api('/api/admin/user?id='+encodeURIComponent(id)+'&days=30').then(function(r){
+    if(r.status!==200){ el('dlg-body').innerHTML='<div class="msg err">讀取失敗：'+esc((r.data&&r.data.error)||r.status)+'</div>'; return; }
+    renderDetail(r.data);
+  }).catch(function(){ el('dlg-body').innerHTML='<div class="msg err">無法連線</div>'; });
+}
+
+function dayKey(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+
+function renderDetail(d){
+  var u=d.user, name=u.name||u.email||'(未命名)';
+  var av=u.avatar? '<img src="'+esc(u.avatar)+'" alt="" referrerpolicy="no-referrer">' : '<span class="ini">'+esc(name.slice(0,1))+'</span>';
+  var lt=d.lifetime||{};
+  var h='<div class="dh">'+av+'<div><b>'+esc(name)+'</b><span>'+esc(u.email||'')
+    +' · 註冊 '+fmt(u.created_at)+' · 最後上線 '+fmt(u.last_seen_at)+'</span></div></div>';
+
+  // 概況
+  h+='<div class="dtiles">'
+    + tile('練習進度', pctTxt(coverage(u))+'%', '題庫覆蓋率')
+    + tile('累計作答', (u.total_answered||0).toLocaleString(), '答對 '+(u.total_correct||0).toLocaleString())
+    + tile('正確率', acc(u)+'%', '全部作答')
+    + tile('活躍天數', (lt.active_days||0), '連續 '+(u.streak_days||0)+' 天')
+    + tile('錯題池', (u.wrong_pool||0), '待複習')
+    + tile('收藏', (u.bookmarks||0), '題')
+    + '</div>';
+
+  // 近 30 天
+  var map={}; (d.activity||[]).forEach(function(a){ map[a.day]=a; });
+  var days=[], today=new Date(); today.setHours(0,0,0,0);
+  for(var i=(d.days||30)-1;i>=0;i--){ var t=new Date(today); t.setDate(t.getDate()-i); var k=dayKey(t); days.push({k:k,d:t,a:map[k]||{answered:0,correct:0}}); }
+  var mx=Math.max.apply(null,days.map(function(x){return x.a.answered;}));
+  var sum30=days.reduce(function(a,x){return a+x.a.answered;},0);
+  var act30=days.filter(function(x){return x.a.answered>0;}).length;
+  h+='<div class="dsec">近 30 天每日作答題數　<span style="font-weight:400;letter-spacing:0">共 '+sum30+' 題，'+act30+' 天有練習</span></div>';
+  if(!mx){
+    h+='<div class="msg" style="padding:26px">近 30 天沒有練習紀錄</div>';
+  } else {
+    var top=niceMax(mx);
+    h+='<div class="chart" id="chart">';
+    [0.5,1].forEach(function(f){ h+='<div class="grid" style="bottom:calc(22px + (100% - 22px)*'+f+')"><span class="gl">'+Math.round(top*f)+'</span></div>'; });
+    days.forEach(function(x,i){
+      var pct=x.a.answered/top*100;
+      var lab=(i===0||i===days.length-1||x.d.getDate()===1||x.d.getDay()===1)? (x.d.getMonth()+1)+'/'+x.d.getDate() : '';
+      h+='<div class="col" data-i="'+i+'"><div class="b'+(x.a.answered?'':' zero')+'" style="height:'+pct.toFixed(1)+'%"></div>'
+        + (lab?'<span class="lbl'+((i===0||i===days.length-1)?' edge':'')+'">'+lab+'</span>':'')+'</div>';
+    });
+    h+='</div>';
+  }
+
+  // 各科
+  var ss=secStats(u);
+  var rows=SEC_ORDER.map(function(k){
+    var v=ss[k]||{}, tot=v.total||SEC_TOTAL[k]||0, seen=v.seen||0;
+    var avg=seen? (v.stars||0)/seen : 0;
+    return {k:k,tot:tot,seen:seen,mastered:v.mastered,wrong:v.wrong,avg:avg,cov:tot?seen/tot*100:0,hasNew:v.total!=null};
+  });
+  var practiced=rows.filter(function(x){return x.seen>=20;});
+  var weakest=practiced.length? practiced.slice().sort(function(a,b){return a.avg-b.avg;})[0] : null;
+  h+='<div class="dsec">各科練習狀況</div><div style="overflow-x:auto"><table class="stbl"><thead><tr>'
+    +'<th>科目</th><th>進度</th><th>練過 / 總題數</th><th>精熟（3星）</th><th>錯題</th><th>平均星數</th></tr></thead><tbody>';
+  rows.forEach(function(x){
+    var isWeak=weakest&&x.k===weakest.k&&practiced.length>1;
+    h+='<tr><td'+(isWeak?' class="weak" title="已練科目中平均星數最低"':'')+'>'+esc(x.k)+(isWeak?' ⚠':'')+'</td>'
+      +'<td>'+covBar(x.cov,90)+'</td>'
+      +'<td>'+x.seen+' / '+x.tot+'</td>'
+      +'<td>'+(x.mastered!=null?x.mastered:'—')+'</td>'
+      +'<td>'+(x.wrong!=null?x.wrong:'—')+'</td>'
+      +'<td>'+(x.seen?x.avg.toFixed(2):'—')+'</td></tr>';
+  });
+  h+='</tbody></table></div>';
+  var legacy=rows.some(function(x){return x.seen&&!x.hasNew;});
+  h+='<p class="note">「精熟」＝連續答對累積到 3 顆星；答錯會歸零。平均星數越低代表該科越常答錯。'
+    +(weakest&&practiced.length>1?'<br>⚠ 標記已練 20 題以上的科目中最弱的一科。':'')
+    +(legacy?'<br>「—」表示該使用者尚未用新版同步，下次練習後會補上。':'')
+    +'</p>';
+
+  el('dlg-body').innerHTML=h;
+
+  // 長條圖 hover
+  var tip=el('tip');
+  Array.prototype.forEach.call(document.querySelectorAll('#chart .col'),function(c){
+    c.onmousemove=function(ev){
+      var x=days[+c.dataset.i], a=x.a;
+      var w=['日','一','二','三','四','五','六'][x.d.getDay()];
+      tip.innerHTML='<b>'+(x.d.getMonth()+1)+'/'+x.d.getDate()+'（'+w+'）</b><br>'
+        +(a.answered? '<span>作答</span> '+a.answered+' 題　<span>答對</span> '+a.correct+' 題<br><span>正確率</span> '+Math.round(a.correct/a.answered*100)+'%'
+                    : '<span>沒有練習</span>');
+      tip.style.display='block';
+      var tx=ev.clientX+14, ty=ev.clientY-10;
+      if(tx+tip.offsetWidth>window.innerWidth-8) tx=ev.clientX-tip.offsetWidth-14;
+      tip.style.left=tx+'px'; tip.style.top=ty+'px';
+    };
+    c.onmouseleave=function(){ tip.style.display='none'; };
+  });
+}
+function niceMax(v){
+  if(v<=5) return 5;
+  var p=Math.pow(10,Math.floor(Math.log10(v))), n=v/p;
+  return (n<=1?1:n<=2?2:n<=5?5:10)*p;
 }
 
 function toggleBlock(id,blocked){
@@ -216,6 +377,9 @@ function boot(){
   if(!API){ fail('\u5c1a\u672a\u5728 config.js \u8a2d\u5b9a Worker \u7db2\u5740'); return; }
   el('signout').onclick=function(){ try{localStorage.removeItem(LS_TOKEN);}catch(e){} location.href='./'; };
   ['q','filter','sort'].forEach(function(id){ el(id).addEventListener('input',render); });
+  el('dlg-x').onclick=closeDetail;
+  el('dlg').addEventListener('click',function(e){ if(e.target===el('dlg')) closeDetail(); });
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape') closeDetail(); });
   if(!tok()){ location.href='./'; return; }
   api('/api/me').then(function(r){
     if(r.status!==200||!r.data.user){ location.href='./'; return; }
