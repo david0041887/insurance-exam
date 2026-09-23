@@ -567,36 +567,69 @@ var LS_THEME  = 'ins_theme_v1';  // 'dark' | 'light'
 var LS_NOTES        = 'ins_notes_v1';
 
 function loadD(key){ try{ return JSON.parse(localStorage.getItem(key)||'{}'); }catch(e){ return {}; } }
+
+// ─── 題目鍵值：以內容雜湊為準，題庫增刪不會讓進度錯位 ───────────────
+var QKEYS=[], QIDX={};
+function buildQKeys(){
+  QKEYS=new Array(ALL_QUESTIONS.length); QIDX={};
+  for(var i=0;i<ALL_QUESTIONS.length;i++){
+    var k=sha1Hex(ALL_QUESTIONS[i].question+'|'+String(ALL_QUESTIONS[i].answer)).slice(0,12);
+    QKEYS[i]=k;
+    if(QIDX[k]===undefined) QIDX[k]=i;   // 完全重複的題目共用同一鍵
+  }
+}
+function qk(i){ return QKEYS[i]; }                    // 索引 -> 鍵
+function qi(k){ var v=QIDX[k]; return v===undefined?-1:v; }  // 鍵 -> 索引（-1 表示題目已不存在）
+
+var LS_KEYMIG='ins_keymig_v1';
+function migrateIndexKeys(){
+  try{ if(localStorage.getItem(LS_KEYMIG)) return; }catch(e){ return; }
+  var stores=[LS_WRONG,LS_STARS,LS_BOOKMARKS,LS_NOTES];
+  var moved=0;
+  stores.forEach(function(key){
+    var d=loadD(key), out={}, changed=false;
+    for(var k in d){
+      if(/^\d+$/.test(k)){                 // 舊格式：陣列索引
+        var nk=QKEYS[parseInt(k,10)];
+        if(nk){ out[nk]=d[k]; moved++; }
+        changed=true;
+      } else { out[k]=d[k]; }
+    }
+    if(changed) saveD(key,out);
+  });
+  try{ localStorage.setItem(LS_KEYMIG,String(Date.now())); }catch(e){}
+  if(moved) console.log('進度已從索引鍵遷移為內容鍵：'+moved+' 筆');
+}
 function saveD(key,d){ try{ localStorage.setItem(key,JSON.stringify(d)); }catch(e){} }
 
 // ─── Wrong Pool ──────────────────────────────────────────────────────
 function getWrongPool(){ return loadD(LS_WRONG); }
-function getWrongCount(idx){ var d=getWrongPool(); return d[idx]?d[idx].count:0; }
-function getReviewStreak(idx){ var d=getWrongPool(); return d[idx]?d[idx].streak:0; }
+function getWrongCount(idx){ var d=getWrongPool(),k=qk(idx); return d[k]?d[k].count:0; }
+function getReviewStreak(idx){ var d=getWrongPool(),k=qk(idx); return d[k]?d[k].streak:0; }
 
 function recordWrong(idx){
-  var d=getWrongPool();
-  d[idx]={count:(d[idx]?d[idx].count:0)+1, streak:0};
+  var d=getWrongPool(),k=qk(idx);
+  d[k]={count:(d[k]?d[k].count:0)+1, streak:0};
   saveD(LS_WRONG,d);
 }
 function recordReviewCorrect(idx){
-  var d=getWrongPool();
-  if(!d[idx]) return;
-  d[idx].streak=(d[idx].streak||0)+1;
-  if(d[idx].streak>=3) delete d[idx]; // graduated out
+  var d=getWrongPool(),k=qk(idx);
+  if(!d[k]) return;
+  d[k].streak=(d[k].streak||0)+1;
+  if(d[k].streak>=3) delete d[k]; // graduated out
   saveD(LS_WRONG,d);
 }
 
 // ─── Stars ───────────────────────────────────────────────────────────
-function getStars(idx){ var d=loadD(LS_STARS); return d[idx]||0; }
+function getStars(idx){ var d=loadD(LS_STARS); return d[qk(idx)]||0; }
 function recordCorrectStar(idx){
-  var d=loadD(LS_STARS);
-  d[idx]=Math.min((d[idx]||0)+1,3);
+  var d=loadD(LS_STARS),k=qk(idx);
+  d[k]=Math.min((d[k]||0)+1,3);
   saveD(LS_STARS,d);
 }
 function resetStars(idx){
   var d=loadD(LS_STARS);
-  d[idx]=0;
+  d[qk(idx)]=0;
   saveD(LS_STARS,d);
 }
 
@@ -608,10 +641,10 @@ function clearAllData(){
 
 // ─── Bookmarks ───────────────────────────────────────────────────────
 function getBookmarks(){ return loadD(LS_BOOKMARKS); }
-function isBookmarked(idx){ return !!getBookmarks()[idx]; }
+function isBookmarked(idx){ return !!getBookmarks()[qk(idx)]; }
 function toggleBookmark(idx){
-  var d=getBookmarks();
-  if(d[idx]) delete d[idx]; else d[idx]=true;
+  var d=getBookmarks(),k=qk(idx);
+  if(d[k]) delete d[k]; else d[k]=true;
   saveD(LS_BOOKMARKS,d);
   updateBookmarkBtn(idx);
   updateSidePanels();
@@ -627,10 +660,10 @@ function updateBookmarkBtn(idx){
 function toggleBookmarkCurrent(){ if(session[cur]) toggleBookmark(session[cur].idx); }
 function startBookmarksReview(){
   var bm=getBookmarks();
-  var keys=Object.keys(bm).filter(function(k){return ALL_QUESTIONS[k];});
+  var keys=Object.keys(bm).filter(function(k){return qi(k)>=0;});
   if(!keys.length){alert('目前沒有收藏的題目。點題目旁的 ☆ 圖示來收藏。');return;}
   isReviewMode=false;
-  session=shuffle(keys.map(function(k){return {q:ALL_QUESTIONS[k],idx:parseInt(k)};}));
+  session=shuffle(keys.map(function(k){var i=qi(k);return {q:ALL_QUESTIONS[i],idx:i};}));
   initSession();
 }
 
@@ -840,7 +873,7 @@ function getSectionStarSummary(section){
   var starsD=loadD(LS_STARS);
   for(var i=0;i<ALL_QUESTIONS.length;i++){
     if(ALL_QUESTIONS[i].section===section){
-      var s=starsD[i]||0;
+      var s=starsD[qk(i)]||0;
       counts[s]++;
     }
   }
@@ -899,7 +932,7 @@ function buildTopicsUI(){
 }
 
 // ─── Data loading & boot ─────────────────────────────────────────────
-var DATA_VERSION='12';  // bump when questions.json content changes
+var DATA_VERSION='13';  // bump when questions.json content changes
 var DATA_CACHE_KEY='ins_data_v'+DATA_VERSION;
 function loadData(){
   // Purge old cache versions
@@ -935,6 +968,8 @@ function bootApp(){
 }
 loadData().then(function(qs){
   ALL_QUESTIONS=qs;
+  buildQKeys();
+  migrateIndexKeys();
   bootApp();
 }).catch(function(err){
   document.getElementById('welcome-loading').innerHTML='<div style="color:var(--wrong)">⚠ 題庫載入失敗</div><div style="margin-top:8px;color:var(--text3);font-size:12px">'+(err.message||err)+'</div>';
@@ -963,10 +998,11 @@ function updateWrongPanel(){
   panel.style.display='block';
   var top=keys.slice().sort(function(a,b){return (d[b]?d[b].count:0)-(d[a]?d[a].count:0);}).slice(0,5);
   var html='<div style="margin-bottom:8px">複習池共 <strong style="color:#f87171">'+keys.length+'</strong> 題</div>';
-  top.forEach(function(idx){
-    var q=ALL_QUESTIONS[idx]; if(!q) return;
-    var st=d[idx]?d[idx].streak:0;
-    var cnt=d[idx]?d[idx].count:0;
+  top.forEach(function(key){
+    var idx=qi(key); if(idx<0) return;
+    var q=ALL_QUESTIONS[idx];
+    var st=d[key]?d[key].streak:0;
+    var cnt=d[key]?d[key].count:0;
     html+='<div onclick="drillQuestion('+idx+')" style="background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:7px 9px;margin-bottom:5px;cursor:pointer" onmouseover="this.style.borderColor=\'#f87171\'" onmouseout="this.style.borderColor=\'var(--border)\'">';
     html+='<div style="display:flex;justify-content:space-between;margin-bottom:3px">';
     html+='<span style="color:#f87171;font-size:11px;font-weight:700">❌ '+cnt+' 次</span>';
@@ -984,7 +1020,7 @@ function updateSectionStatsPanel(){
     var counts=[0,0,0,0];
     for(var i=0;i<ALL_QUESTIONS.length;i++){
       if(ALL_QUESTIONS[i].section===s){
-        var st=starsD[i]||0;
+        var st=starsD[qk(i)]||0;
         counts[Math.min(st,3)]++;
       }
     }
@@ -1124,12 +1160,13 @@ function startSession(){
 function startReview(){
   isReviewMode=true;
   var wrongD=getWrongPool();
-  var keys=Object.keys(wrongD);
+  var keys=Object.keys(wrongD).filter(function(k){return qi(k)>=0;});
   if(!keys.length){alert('複習池是空的！繼續練習，答錯的題目會自動加入。');return;}
-  session=shuffle(keys.map(function(k){return {q:ALL_QUESTIONS[k],idx:parseInt(k)};}));
+  session=shuffle(keys.map(function(k){var i=qi(k);return {q:ALL_QUESTIONS[i],idx:i};}));
   initSession();
 }
 function initSession(){
+  try{ prefetchExplanations(); }catch(e){}
   isViewOnly=false;
   answered=new Array(session.length).fill(null);
   cur=0; sessionCorrect=0; sessionWrong=0; sessionWrongItems=[];
@@ -1295,8 +1332,8 @@ function renderStreakBar(idx){
 }
 
 // ─── Notes ───────────────────────────────────────────────────────────────
-function getNoteText(idx){ return loadD(LS_NOTES)[idx]||''; }
-function saveNoteText(idx,text){ var d=loadD(LS_NOTES); if(text) d[idx]=text; else delete d[idx]; saveD(LS_NOTES,d); }
+function getNoteText(idx){ return loadD(LS_NOTES)[qk(idx)]||''; }
+function saveNoteText(idx,text){ var d=loadD(LS_NOTES),k=qk(idx); if(text) d[k]=text; else delete d[k]; saveD(LS_NOTES,d); }
 function hasNote(idx){ return !!getNoteText(idx); }
 var _noteDebounce=null;
 function debounceSaveNote(){ clearTimeout(_noteDebounce); _noteDebounce=setTimeout(saveNoteNow,600); }
@@ -1674,9 +1711,11 @@ function importData(ev){
     try{
       var d=JSON.parse(e.target.result);
       if(!confirm('將覆蓋目前的錯題池、星星、收藏與統計記錄。確定匯入？')) return;
-      if(d.wrong) saveD(LS_WRONG,d.wrong);
-      if(d.stars) saveD(LS_STARS,d.stars);
-      if(d.bookmarks) saveD(LS_BOOKMARKS,d.bookmarks);
+      // 匯入的舊備份可能仍是索引鍵，一併轉換
+      function conv(o){ var out={}; for(var k in o){ var nk=/^\d+$/.test(k)? QKEYS[parseInt(k,10)] : k; if(nk) out[nk]=o[k]; } return out; }
+      if(d.wrong) saveD(LS_WRONG,conv(d.wrong));
+      if(d.stars) saveD(LS_STARS,conv(d.stars));
+      if(d.bookmarks) saveD(LS_BOOKMARKS,conv(d.bookmarks));
       if(d.stats) saveD(LS_STATS,d.stats);
       if(d.theme) localStorage.setItem(LS_THEME,d.theme);
       applyTheme(); updateSidePanels();
@@ -1723,23 +1762,55 @@ window.addEventListener('appinstalled',function(){
   if(btn) btn.style.display='none';
 });
 
-// ─── 解析（按需載入）─────────────────────────
-var EXPL=null, EXPL_STATE=0;   // 0=未載入 1=載入中 2=完成 3=失敗
-var LAWS=null, LAWREF=null;    // 條文原文與每題對應
+// ─── 解析（依科目按需載入）─────────────────
+var EXPL={};                       // 已載入的解析（各科合併）
+var EXP_STATE={};                  // slug -> 1=載入中 2=完成 3=失敗
+var EXP_WAIT={};                   // slug -> Promise
+var LAWS=null, LAWREF=null, LAW_STATE=0;
+var EXP_SLUG={'保險法規概要':'law','保險學概要':'ins',
+  '財產風險管理概要':'riskp','人身風險管理概要':'riskl',
+  '財產保險行銷概要':'mktp','人身保險行銷概要':'mktl'};
+
+window.qk=function(i){ return QKEYS[i]; };
 function expKey(q){
   // 與 _build/gen.py 的 qkey 一致：sha1(question|answer) 前 12 碼
   return sha1Hex(q.question+'|'+String(q.answer)).slice(0,12);
 }
-function loadExplanations(){
-  if(EXPL_STATE===1||EXPL_STATE===2) return Promise.resolve();
-  EXPL_STATE=1;
-  return Promise.all([
-    fetch('explanations.json?v='+DATA_VERSION,{cache:'no-cache'}).then(function(r){ if(!r.ok) throw 0; return r.json(); }),
-    fetch('laws.json?v='+DATA_VERSION,{cache:'no-cache'}).then(function(r){ return r.ok?r.json():null; }).catch(function(){ return null; }),
-    fetch('law-refs.json?v='+DATA_VERSION,{cache:'no-cache'}).then(function(r){ return r.ok?r.json():null; }).catch(function(){ return null; })
-  ]).then(function(a){ EXPL=a[0]; LAWS=a[1]; LAWREF=a[2]; EXPL_STATE=2; })
-    .catch(function(){ EXPL_STATE=3; });
+
+function loadLaws(){
+  if(LAW_STATE) return EXP_WAIT.__laws||Promise.resolve();
+  LAW_STATE=1;
+  EXP_WAIT.__laws=Promise.all([
+    fetch('laws.json?v='+DATA_VERSION,{cache:'no-cache'}).then(function(r){ return r.ok?r.json():null; }),
+    fetch('law-refs.json?v='+DATA_VERSION,{cache:'no-cache'}).then(function(r){ return r.ok?r.json():null; })
+  ]).then(function(a){ LAWS=a[0]; LAWREF=a[1]; LAW_STATE=2; })
+    .catch(function(){ LAW_STATE=3; });
+  return EXP_WAIT.__laws;
 }
+
+function loadExpSection(section){
+  var sl=EXP_SLUG[section];
+  if(!sl) return Promise.resolve();
+  if(EXP_STATE[sl]===2||EXP_STATE[sl]===3) return Promise.resolve();
+  if(EXP_STATE[sl]===1) return EXP_WAIT[sl];
+  EXP_STATE[sl]=1;
+  EXP_WAIT[sl]=fetch('exp/'+sl+'.json?v='+DATA_VERSION,{cache:'no-cache'})
+    .then(function(r){ if(!r.ok) throw 0; return r.json(); })
+    .then(function(d){ for(var k in d) EXPL[k]=d[k]; EXP_STATE[sl]=2; })
+    .catch(function(){ EXP_STATE[sl]=3; });
+  return EXP_WAIT[sl];
+}
+
+// 提前預載本次練習會用到的科目，避免作答後才等
+function prefetchExplanations(){
+  var seen={};
+  (session||[]).forEach(function(it){
+    var sec=it.q&&it.q.section;
+    if(sec&&!seen[sec]){ seen[sec]=1; loadExpSection(sec); }
+  });
+  loadLaws();
+}
+
 function lawBlock(q,src){
   if(!src) return '';
   var ids=(LAWREF&&LAWS)?LAWREF[expKey(q)]:null;
@@ -1759,22 +1830,27 @@ function renderExplanation(q){
   var el=document.getElementById('exp-section');
   if(!el) return;
   if(!answered[cur]){ el.innerHTML=''; return; }
+  var token=++renderExplanation._t;          // 避免載入完成時題目已翻過
   function paint(){
-    if(EXPL_STATE!==2||!EXPL){ el.innerHTML=''; return; }
+    if(token!==renderExplanation._t) return;
     var t=EXPL[expKey(q)];
     if(!t){ el.innerHTML=''; return; }
     var src='', warn='', body=t;
     body=body.replace(/\n?⚠[^\n]*/g,function(m){ warn=m.trim(); return ''; });
     body=body.replace(/\n?法源：([^\n]*)/,function(m,p){ src=p.trim(); return ''; });
-    el.innerHTML='<div class="exp-box"><div class="exp-head">\u{1F4A1} 解析</div>'
+    el.innerHTML='<div class="exp-box"><div class="exp-head">&#128161; 解析</div>'
       +esc(body.trim())
       +lawBlock(q,src)
       +(warn?'<span class="exp-warn">'+esc(warn)+'</span>':'')+'</div>';
   }
-  if(EXPL_STATE===2) paint();
-  else if(EXPL_STATE===3) el.innerHTML='';
-  else { el.innerHTML='<div class="exp-loading">載入解析中…</div>'; loadExplanations().then(paint); }
+  var sl=EXP_SLUG[q.section];
+  if(EXP_STATE[sl]===2 && LAW_STATE===2){ paint(); return; }
+  if(EXP_STATE[sl]===3){ el.innerHTML=''; return; }
+  el.innerHTML='<div class="exp-loading">載入解析中…</div>';
+  Promise.all([loadExpSection(q.section),loadLaws()]).then(paint);
 }
+renderExplanation._t=0;
+
 // 極簡 SHA-1（與 Python hashlib.sha1 相容，輸入 UTF-8）
 function sha1Hex(str){
   function rol(n,s){ return (n<<s)|(n>>>(32-s)); }

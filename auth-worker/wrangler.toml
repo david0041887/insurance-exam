@@ -13,7 +13,7 @@ database_id = "fb4b76f7-4060-4de1-b8a3-dfcb3f8d5fbc"
 
 [vars]
 # 允許呼叫本 Worker 的前端來源（逗號分隔）
-ALLOWED_ORIGINS = "https://david0041887.github.io,http://127.0.0.1:5500,http://localhost:5500"
+ALLOWED_ORIGINS = "https://david0041887.github.io"
 # 登入完成後導回的站台網址
 SITE_URL = "https://david0041887.github.io/insurance-exam/"
 # Google OAuth Client ID（公開值，非機密）
@@ -22,3 +22,19 @@ GOOGLE_CLIENT_ID = "280570928009-tge3vh515ejilvof099qerr4q4mrevfs.apps.googleuse
 # 機密請用指令設定，不要寫在這個檔案：
 #   npx wrangler secret put GOOGLE_CLIENT_SECRET
 #   openssl rand -base64 32 | npx wrangler secret put JWT_SECRET
+
+# 速率限制（Cloudflare 原生，跨 isolate 準確計數）
+[[ratelimits]]
+name = "RL_ALL"
+namespace_id = "2001"
+simple = { limit = 120, period = 60 }
+
+[[ratelimits]]
+name = "RL_AUTH"
+namespace_id = "2002"
+simple = { limit = 10, period = 60 }
+
+[[ratelimits]]
+name = "RL_STATS"
+namespace_id = "2003"
+simple = { limit = 30, period = 60 }

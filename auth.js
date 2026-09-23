@@ -112,12 +112,13 @@
       var stars = loadD(LS_STARS), wrong = loadD(LS_WRONG);
       (window.ALL_QUESTIONS || []).forEach(function (q, i) {
         var s = sec[q.section] || (sec[q.section] = { total: 0, seen: 0, mastered: 0, wrong: 0, stars: 0 });
+        var k = window.qk ? window.qk(i) : i;   // 內容雜湊鍵
         s.total++;
-        if (stars[i] != null) {
-          s.seen++; s.stars += stars[i];
-          if (stars[i] >= 3) s.mastered++;
+        if (stars[k] != null) {
+          s.seen++; s.stars += stars[k];
+          if (stars[k] >= 3) s.mastered++;
         }
-        if (wrong[i]) s.wrong++;
+        if (wrong[k]) s.wrong++;
       });
     } catch (e) {}
     var day = todayStr();

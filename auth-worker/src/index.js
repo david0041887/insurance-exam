@@ -38,16 +38,16 @@ async function signJWT(payload, secret) {
 }
 
 async function verifyJWT(token, secret) {
-  if (!token || token.split('.').length !== 3) return null;
-  const [h, b, s] = token.split('.');
-  const ok = await crypto.subtle.verify('HMAC', await hmacKey(secret),
-    b64urlDecode(s), enc.encode(`${h}.${b}`));
-  if (!ok) return null;
-  let payload;
-  try { payload = JSON.parse(new TextDecoder().decode(b64urlDecode(b))); }
-  catch { return null; }
-  if (!payload.exp || payload.exp < Math.floor(Date.now() / 1000)) return null;
-  return payload;
+  try {
+    if (!token || token.split('.').length !== 3) return null;
+    const [h, b, s] = token.split('.');
+    const ok = await crypto.subtle.verify('HMAC', await hmacKey(secret),
+      b64urlDecode(s), enc.encode(`${h}.${b}`));
+    if (!ok) return null;
+    const payload = JSON.parse(new TextDecoder().decode(b64urlDecode(b)));
+    if (!payload.exp || payload.exp < Math.floor(Date.now() / 1000)) return null;
+    return payload;
+  } catch { return null; }          // 格式錯誤一律視為無效，不要拋例外
 }
 
 function corsHeaders(req, env) {
@@ -68,6 +68,18 @@ function json(req, env, obj, status = 200) {
     status,
     headers: { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders(req, env) },
   });
+}
+
+/** 速率限制：使用 Cloudflare 原生 Rate Limiting 綁定（跨 isolate 準確） */
+async function rateLimited(binding, key) {
+  if (!binding) return false;                 // 綁定未設定時不擋
+  try {
+    const { success } = await binding.limit({ key });
+    return !success;
+  } catch { return false; }
+}
+function clientKey(req) {
+  return req.headers.get('CF-Connecting-IP') || 'unknown';
 }
 
 /** 取出目前使用者；每次都查 D1，所以停用會立即生效 */
@@ -95,11 +107,24 @@ export default {
       return new Response(null, { status: 204, headers: corsHeaders(req, env) });
     }
 
+    // 每個 IP：整體每分鐘 120 次，登入流程每分鐘 10 次
+    const ip = clientKey(req);
+    if (await rateLimited(env.RL_ALL, ip)) {
+      return json(req, env, { error: 'rate_limited' }, 429);
+    }
+    if (path.indexOf('/auth/') === 0 && await rateLimited(env.RL_AUTH, ip)) {
+      return json(req, env, { error: 'rate_limited' }, 429);
+    }
+
     try {
       // ---- 1. 導向 Google ----
       if (path === '/auth/start') {
         if (!env.GOOGLE_CLIENT_ID) return new Response('GOOGLE_CLIENT_ID 尚未設定', { status: 500 });
-        const state = b64url(crypto.getRandomValues(new Uint8Array(16)));
+        // state 以 JWT 簽章並帶 10 分鐘效期，回呼時驗證，防 CSRF
+        const state = await signJWT({
+          n: b64url(crypto.getRandomValues(new Uint8Array(12))),
+          exp: Math.floor(Date.now() / 1000) + 600,
+        }, env.JWT_SECRET);
         const redirect = `${url.origin}/auth/callback`;
         const g = new URL('https://accounts.google.com/o/oauth2/v2/auth');
         g.searchParams.set('client_id', env.GOOGLE_CLIENT_ID);
@@ -116,6 +141,12 @@ export default {
         const code = url.searchParams.get('code');
         const site = env.SITE_URL || '/';
         if (!code) return Response.redirect(site + '#err=no_code', 302);
+
+        // 驗證 state：必須是本 Worker 簽發且未過期
+        const st = url.searchParams.get('state');
+        if (!st || !(await verifyJWT(st, env.JWT_SECRET))) {
+          return Response.redirect(site + '#err=bad_state', 302);
+        }
 
         const redirect = `${url.origin}/auth/callback`;
         const tok = await fetch('https://oauth2.googleapis.com/token', {
@@ -181,6 +212,9 @@ export default {
       if (path === '/api/stats' && req.method === 'POST') {
         const r = await currentUser(req, env);
         if (r.error) return json(req, env, { error: r.error, note: r.note || null }, r.status);
+        if (await rateLimited(env.RL_STATS, r.user.id)) {
+          return json(req, env, { error: 'rate_limited' }, 429);
+        }
         const b = await req.json().catch(() => ({}));
         const n = v => Math.max(0, Math.min(1e9, parseInt(v, 10) || 0));
 

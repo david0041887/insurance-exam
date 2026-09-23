@@ -1,5 +1,6 @@
-const CACHE = 'ins-exam-v22';
-const ASSETS = ['./', './index.html', './questions.json', './study.json', './manifest.json', './icon.svg'];
+const CACHE = 'ins-exam-v23';
+// 只預快取開站必要的小檔；題庫與解析改為第一次用到時才快取
+const ASSETS = ['./', './index.html', './manifest.json', './icon.svg'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
@@ -25,7 +26,7 @@ self.addEventListener('fetch', e => {
   const isHTML = req.mode === 'navigate' || req.destination === 'document' ||
                  url.pathname.endsWith('/') || url.pathname.endsWith('.html');
   const isAuth = /(?:config|auth)\.js$/.test(url.pathname) || url.pathname.endsWith('admin.html');
-  const isQuestions = url.pathname.endsWith('questions.json') || url.pathname.endsWith('study.json') || url.pathname.endsWith('explanations.json') || url.pathname.endsWith('laws.json') || url.pathname.endsWith('law-refs.json');
+  const isQuestions = url.pathname.endsWith('questions.json') || url.pathname.endsWith('study.json') || /\/exp\/[a-z]+\.json$/.test(url.pathname) || url.pathname.endsWith('laws.json') || url.pathname.endsWith('law-refs.json');
 
   if (isHTML || isQuestions || isAuth) {
     e.respondWith(
