@@ -1,4 +1,4 @@
-const CACHE = 'ins-exam-v23';
+const CACHE = 'ins-exam-v24';
 // 只預快取開站必要的小檔；題庫與解析改為第一次用到時才快取
 const ASSETS = ['./', './index.html', './manifest.json', './icon.svg'];
 
