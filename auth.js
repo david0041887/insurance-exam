@@ -82,7 +82,7 @@
     var host = document.querySelector('.header-stats');
     if (!host || !PROFILE) return;
     var old = el('user-chip'); if (old) old.remove();
-    var name = PROFILE.name || PROFILE.email || '使用者';
+    var name = PROFILE.nickname || PROFILE.name || PROFILE.email || '使用者';
     var d = document.createElement('div');
     d.className = 'user-chip'; d.id = 'user-chip';
     d.innerHTML =

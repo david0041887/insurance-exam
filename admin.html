@@ -99,6 +99,20 @@
   .stbl tbody tr{cursor:default}
   .stbl tbody tr:hover td{background:none}
   .weak{color:#f87171;font-weight:700}
+  .who .nick{display:flex;align-items:center;gap:5px}
+  .who .pen{background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:11px;padding:1px 3px;border-radius:5px;line-height:1;opacity:0;transition:opacity .12s}
+  tbody tr:hover .who .pen{opacity:1}
+  .who .pen:focus-visible{opacity:1}
+  /* 觸控裝置沒有 hover，鉛筆要一直顯示 */
+  @media (hover:none){ .who .pen{opacity:1} }
+  .who .pen:hover{color:var(--accent);background:var(--bg)}
+  .who .noname{color:var(--text3);font-weight:500;font-style:italic}
+  .nick-in{background:var(--bg);border:1px solid var(--accent);border-radius:7px;padding:4px 8px;color:var(--text);font-family:inherit;font-size:12.5px;width:150px}
+  .nick-in:focus{outline:none}
+  .dh .nickrow{display:flex;align-items:center;gap:8px}
+  .dh .pen{background:transparent;border:1px solid var(--border);color:var(--text3);cursor:pointer;font-size:11px;padding:3px 9px;border-radius:7px;font-family:inherit}
+  .dh .pen:hover{border-color:var(--accent);color:var(--accent)}
+  .hint{font-size:11px;color:var(--text3);margin:-4px 0 14px}
   .note{font-size:11px;color:var(--text3);margin-top:8px;line-height:1.7}
   @media(max-width:768px){ .wrap{padding:14px 10px 50px} .header{padding:11px 14px}
     .dlg{padding:20px 16px} .chart .lbl{display:none} .chart .lbl.edge{display:block} }
@@ -115,7 +129,7 @@
 <div class="wrap">
   <div class="tiles" id="tiles"></div>
   <div class="bar">
-    <input id="q" type="search" placeholder="搜尋姓名或 Email…">
+    <input id="q" type="search" placeholder="搜尋暱稱、姓名或 Email…">
     <select id="filter">
       <option value="all">全部帳號</option>
       <option value="active">啟用中</option>
@@ -127,6 +141,7 @@
       <option value="answered">作答數</option>
       <option value="accuracy">正確率</option>
       <option value="created">註冊時間</option>
+      <option value="name">名稱</option>
     </select>
   </div>
   <div class="tblwrap"><div class="msg" id="state">載入中…</div><table id="tbl" style="display:none">
@@ -169,6 +184,14 @@ function fmt(d){
 var SEC_TOTAL={'保險法規概要':1247,'保險學概要':1263,'財產風險管理概要':433,
   '人身風險管理概要':434,'財產保險行銷概要':435,'人身保險行銷概要':435};
 var SEC_ORDER=['保險法規概要','保險學概要','財產風險管理概要','人身風險管理概要','財產保險行銷概要','人身保險行銷概要'];
+function displayName(r){ return r.nickname || r.name || r.email || '(未命名)'; }
+function subName(r){
+  // 有暱稱時，副標顯示 Google 原名與 email，方便核對
+  var parts=[];
+  if(r.nickname && r.name) parts.push(r.name);
+  if(r.email) parts.push(r.email);
+  return parts.join(' · ');
+}
 function secStats(r){ try{ return r.section_stats? JSON.parse(r.section_stats):{}; }catch(e){ return {}; } }
 function coverage(r){
   var ss=secStats(r), seen=0, tot=0;
@@ -206,25 +229,29 @@ function render(){
     if(f==='active'&&r.is_blocked) return false;
     if(f==='blocked'&&!r.is_blocked) return false;
     if(f==='admin'&&!r.is_admin) return false;
-    if(q&&((r.name||'')+' '+(r.email||'')).toLowerCase().indexOf(q)<0) return false;
+    if(q&&((r.nickname||'')+' '+(r.name||'')+' '+(r.email||'')).toLowerCase().indexOf(q)<0) return false;
     return true;
   });
   rows.sort(function(a,b){
     if(sort==='answered') return (b.total_answered||0)-(a.total_answered||0);
     if(sort==='accuracy') return acc(b)-acc(a);
     if(sort==='created') return String(b.created_at||'').localeCompare(String(a.created_at||''));
+    if(sort==='name') return displayName(a).localeCompare(displayName(b),'zh-Hant');
     return String(b.last_seen_at||'').localeCompare(String(a.last_seen_at||''));
   });
   tiles(DATA);
   if(!rows.length){ el('state').textContent='\u6c92\u6709\u7b26\u5408\u689d\u4ef6\u7684\u5e33\u865f'; el('state').style.display=''; el('tbl').style.display='none'; return; }
   el('state').style.display='none'; el('tbl').style.display='';
   el('rows').innerHTML=rows.map(function(r){
-    var name=r.name||r.email||'(\u672a\u547d\u540d)';
+    var disp=displayName(r), sub=subName(r);
     var av=r.avatar? '<img src="'+esc(r.avatar)+'" alt="" referrerpolicy="no-referrer">'
-                   : '<span class="ini">'+esc(name.slice(0,1))+'</span>';
+                   : '<span class="ini">'+esc(disp.slice(0,1))+'</span>';
     var isMe=ME&&r.id===ME.id;
     return '<tr data-uid="'+esc(r.id)+'"'+(r.is_blocked?' class="blocked"':'')+'>'
-      + '<td class="l"><div class="who">'+av+'<div><b>'+esc(name)+'</b><span>'+esc(r.email||'')+'</span></div></div></td>'
+      + '<td class="l"><div class="who">'+av+'<div>'
+        + '<div class="nick"><b'+(r.nickname?'':' class="noname"')+'>'+esc(disp)+'</b>'
+        + '<button class="pen" data-nick="'+esc(r.id)+'" title="設定暱稱">✎</button></div>'
+        + '<span>'+esc(sub)+'</span></div></div></td>'
       + '<td>'+covBar(coverage(r))+'</td>'
       + '<td>'+(r.total_answered||0).toLocaleString()+'</td>'
       + '<td>'+acc(r)+'%</td>'
@@ -244,6 +271,9 @@ function render(){
   Array.prototype.forEach.call(document.querySelectorAll('#rows tr[data-uid]'),function(tr){
     tr.onclick=function(){ openDetail(tr.dataset.uid); };
   });
+  Array.prototype.forEach.call(document.querySelectorAll('#rows .pen[data-nick]'),function(b){
+    b.onclick=function(ev){ ev.stopPropagation(); editNickname(b.dataset.nick); };
+  });
 }
 
 // ── 使用者練習詳情 ──────────────────────────────
@@ -260,10 +290,13 @@ function openDetail(id){
 function dayKey(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 
 function renderDetail(d){
-  var u=d.user, name=u.name||u.email||'(未命名)';
+  var u=d.user, name=displayName(u);
   var av=u.avatar? '<img src="'+esc(u.avatar)+'" alt="" referrerpolicy="no-referrer">' : '<span class="ini">'+esc(name.slice(0,1))+'</span>';
   var lt=d.lifetime||{};
-  var h='<div class="dh">'+av+'<div><b>'+esc(name)+'</b><span>'+esc(u.email||'')
+  var h='<div class="dh">'+av+'<div>'
+    +'<div class="nickrow"><b>'+esc(name)+'</b>'
+    +'<button class="pen" id="dlg-nick">'+(u.nickname?'✎ 改暱稱':'✎ 設暱稱')+'</button></div>'
+    +'<span>'+esc(subName(u)||u.email||'')
     +' · 註冊 '+fmt(u.created_at)+' · 最後上線 '+fmt(u.last_seen_at)+'</span></div></div>';
 
   // 概況
@@ -327,6 +360,8 @@ function renderDetail(d){
     +'</p>';
 
   el('dlg-body').innerHTML=h;
+  var pen=el('dlg-nick');
+  if(pen) pen.onclick=function(){ editNickname(u.id,function(){ openDetail(u.id); }); };
 
   // 長條圖 hover
   var tip=el('tip');
@@ -349,6 +384,21 @@ function niceMax(v){
   if(v<=5) return 5;
   var p=Math.pow(10,Math.floor(Math.log10(v))), n=v/p;
   return (n<=1?1:n<=2?2:n<=5?5:10)*p;
+}
+
+function editNickname(id, onDone){
+  var r=DATA.filter(function(x){return x.id===id;})[0];
+  var cur=r? (r.nickname||'') : '';
+  var who=r? (r.name||r.email||id) : id;
+  var v=prompt('為「'+who+'」設定暱稱（留空可清除，最多 30 字）：', cur);
+  if(v===null) return;
+  api('/api/admin/nickname',{method:'POST',body:JSON.stringify({id:id,nickname:v})})
+    .then(function(res){
+      if(res.status!==200){ alert('設定失敗：'+((res.data&&res.data.error)||res.status)); return; }
+      if(r) r.nickname=res.data.nickname;
+      render();
+      if(onDone) onDone(res.data.nickname);
+    });
 }
 
 function toggleBlock(id,blocked){

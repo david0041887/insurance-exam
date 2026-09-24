@@ -90,7 +90,7 @@ async function currentUser(req, env) {
   const payload = await verifyJWT(m[1], env.JWT_SECRET);
   if (!payload) return { error: 'bad_token', status: 401 };
   const row = await env.DB.prepare(
-    'SELECT id,email,name,avatar,is_admin,is_blocked,blocked_note,created_at,last_seen_at FROM users WHERE id=?'
+    'SELECT id,email,name,nickname,avatar,is_admin,is_blocked,blocked_note,created_at,last_seen_at FROM users WHERE id=?'
   ).bind(payload.sub).first();
   if (!row) return { error: 'no_user', status: 401 };
   if (row.is_blocked) return { error: 'blocked', note: row.blocked_note || null, status: 403 };
@@ -246,7 +246,7 @@ export default {
         if (r.error) return json(req, env, { error: r.error }, r.status);
         if (!r.user.is_admin) return json(req, env, { error: 'not_admin' }, 403);
         const { results } = await env.DB.prepare(
-          `SELECT u.id,u.email,u.name,u.avatar,u.is_admin,u.is_blocked,u.blocked_note,
+          `SELECT u.id,u.email,u.name,u.nickname,u.avatar,u.is_admin,u.is_blocked,u.blocked_note,
                   u.created_at,u.last_seen_at,
                   COALESCE(s.total_answered,0) AS total_answered,
                   COALESCE(s.total_correct,0)  AS total_correct,
@@ -282,7 +282,7 @@ export default {
         const days = Math.max(7, Math.min(90, parseInt(url.searchParams.get('days') || '30', 10) || 30));
 
         const user = await env.DB.prepare(
-          `SELECT u.id,u.email,u.name,u.avatar,u.is_admin,u.is_blocked,u.blocked_note,
+          `SELECT u.id,u.email,u.name,u.nickname,u.avatar,u.is_admin,u.is_blocked,u.blocked_note,
                   u.created_at,u.last_seen_at,
                   COALESCE(s.total_answered,0) AS total_answered,
                   COALESCE(s.total_correct,0)  AS total_correct,
@@ -307,6 +307,19 @@ export default {
         ).bind(id).first();
 
         return json(req, env, { user, activity: activity || [], lifetime: tot, days });
+      }
+
+      // ---- 6c. 後台：設定暱稱 ----
+      if (path === '/api/admin/nickname' && req.method === 'POST') {
+        const r = await currentUser(req, env);
+        if (r.error) return json(req, env, { error: r.error }, r.status);
+        if (!r.user.is_admin) return json(req, env, { error: 'not_admin' }, 403);
+        const b = await req.json().catch(() => ({}));
+        if (!b.id) return json(req, env, { error: 'no_id' }, 400);
+        let nk = (b.nickname == null ? '' : String(b.nickname)).trim().slice(0, 30);
+        await env.DB.prepare('UPDATE users SET nickname=?1 WHERE id=?2')
+          .bind(nk || null, b.id).run();
+        return json(req, env, { ok: true, nickname: nk || null });
       }
 
       // ---- 7. 後台：設定／取消管理員 ----
