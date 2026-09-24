@@ -35,6 +35,18 @@
   .layout{display:flex;flex:1;max-width:1160px;margin:0 auto;width:100%;padding:20px 16px;gap:20px}
   .sidebar{width:260px;flex-shrink:0;display:flex;flex-direction:column;gap:14px}
   .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px}
+  /* 可收合面板 */
+  details.panel{padding:0}
+  details.panel > summary{list-style:none;cursor:pointer;padding:14px 16px;display:flex;align-items:center;gap:8px;
+    font-size:11px;font-weight:700;letter-spacing:1px;color:var(--text3);border-radius:var(--radius);transition:color .15s}
+  details.panel > summary::-webkit-details-marker{display:none}
+  details.panel > summary:hover{color:var(--text2)}
+  details.panel > summary .ca{margin-left:auto;font-size:9px;transition:transform .2s;color:var(--text3)}
+  details.panel[open] > summary .ca{transform:rotate(90deg)}
+  details.panel[open] > summary{border-bottom:1px solid var(--border);border-radius:var(--radius) var(--radius) 0 0}
+  details.panel .pbody{padding:14px 16px 16px}
+  details.panel > summary .badge{background:var(--bg);border:1px solid var(--border);border-radius:10px;
+    padding:1px 7px;font-size:10px;font-weight:700;color:var(--text2);letter-spacing:0}
   .panel-title{font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:12px}
   /* MODE TABS */
   .mode-toggle{display:flex;background:var(--bg);border-radius:10px;padding:3px;gap:3px;flex-wrap:wrap}
@@ -51,7 +63,9 @@
   .chip.active{background:var(--surface2);border-color:var(--accent);color:var(--accent)}
   .chip.life-chip.active{border-color:var(--life);color:var(--life);background:rgba(245,158,11,.1)}
   .chip.prop-chip.active{border-color:var(--property);color:var(--property);background:rgba(6,182,212,.1)}
-  .section-chip{width:100%;padding:7px 9px;border-radius:8px;font-size:11px;text-align:left;margin-bottom:3px;display:flex;align-items:center;justify-content:space-between;gap:6px}
+  #section-chips{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+  .section-chip{width:100%;padding:6px 8px;border-radius:8px;font-size:10.5px;text-align:left;margin-bottom:0;display:flex;align-items:center;justify-content:space-between;gap:4px;line-height:1.35}
+  .section-chip-label{overflow:hidden;text-overflow:ellipsis}
   .chip.disabled{opacity:.35;cursor:not-allowed;pointer-events:none;background:var(--bg);color:var(--text3);border-color:var(--border)}
   .section-chip-label{flex:1}
   .section-star-info{font-size:10px;color:var(--text3);display:flex;gap:4px;align-items:center;flex-shrink:0}
@@ -224,11 +238,13 @@
   .topic-chip.active{background:linear-gradient(135deg,var(--accent),var(--accent2));border-color:transparent;color:#fff}
   .topic-count{background:rgba(139,147,196,.15);padding:0 6px;border-radius:8px;font-size:10px;color:var(--text3);font-weight:600;min-width:20px;text-align:center}
   .topic-chip.active .topic-count{background:rgba(255,255,255,.25);color:#fff}
+  .action-dock{margin-top:10px}
   .start-btn{width:100%;padding:11px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:10px;color:#fff;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;transition:all .2s;box-shadow:0 4px 16px rgba(79,110,247,.3);margin-top:2px}
   .start-btn:hover{transform:translateY(-1px)}
   .start-btn:disabled,.start-btn.disabled{background:var(--surface2);color:var(--text3);box-shadow:none;cursor:not-allowed;opacity:.55}
   .start-btn:disabled:hover,.start-btn.disabled:hover{transform:none}
-  .review-btn{width:100%;padding:11px;background:linear-gradient(135deg,#dc2626,#991b1b);border:none;border-radius:10px;color:#fff;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;transition:all .2s;box-shadow:0 4px 16px rgba(220,38,38,.3);margin-top:6px}
+  .review-row{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}
+  .review-btn{width:100%;padding:8px 6px;background:linear-gradient(135deg,#dc2626,#991b1b);border:none;border-radius:10px;color:#fff;font-weight:700;font-size:11.5px;cursor:pointer;font-family:inherit;transition:all .2s;margin-top:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .review-btn:hover{transform:translateY(-1px)}
   .review-btn:disabled{opacity:.35;cursor:not-allowed;transform:none}
   .count-display{text-align:center;font-size:10px;color:var(--text3);margin-top:5px}
@@ -440,23 +456,28 @@
           <div class="chip" data-count="0" onclick="setCount(this)">全部</div>
         </div>
       </div>
-      <button class="start-btn" id="start-btn" onclick="startSession()">&#9654; 開始練習</button>
-      <button class="review-btn" id="review-btn" onclick="startReview()">&#128293; 錯題總複習</button>
-      <button class="review-btn" id="bookmark-review-btn" onclick="startBookmarksReview()" style="background:linear-gradient(135deg,#f59e0b,#b45309);box-shadow:0 4px 16px rgba(245,158,11,.3);margin-top:6px">&#11088; 我的收藏</button>
-      <div class="count-display" id="count-display">符合條件：<strong>0</strong> 題</div>
+      <div class="action-dock">
+        <button class="start-btn" id="start-btn" onclick="startSession()">&#9654; 開始練習</button>
+        <div class="review-row">
+          <button class="review-btn" id="review-btn" onclick="startReview()">&#128293; 錯題複習</button>
+          <button class="review-btn" id="bookmark-review-btn" onclick="startBookmarksReview()" style="background:linear-gradient(135deg,#f59e0b,#b45309)">&#11088; 收藏</button>
+        </div>
+        <div class="count-display" id="count-display">符合條件：<strong>0</strong> 題</div>
+      </div>
     </div>
     <!-- Daily progress -->
-    <div class="panel">
-      <div class="panel-title">&#128197; 今日進度</div>
-      <div id="daily-content" style="font-size:12px;color:var(--text2);line-height:1.8"></div>
-    </div>
-    <div class="panel">
-      <div class="panel-title">&#11088; 星星答對率</div>
-      <div id="section-stats-content"></div>
-    </div>
+    <details class="panel" data-pk="daily">
+      <summary>&#128197; 今日進度<span class="ca">&#9654;</span></summary>
+      <div class="pbody"><div id="daily-content" style="font-size:12px;color:var(--text2);line-height:1.8"></div></div>
+    </details>
+    <details class="panel" data-pk="stars">
+      <summary>&#11088; 星星答對率<span class="ca">&#9654;</span></summary>
+      <div class="pbody"><div id="section-stats-content"></div></div>
+    </details>
     <!-- Tools panel: stats, export/import, theme -->
-    <div class="panel">
-      <div class="panel-title">&#128736;&#65039; 工具</div>
+    <details class="panel" data-pk="tools">
+      <summary>&#128736;&#65039; 工具<span class="ca">&#9654;</span></summary>
+      <div class="pbody">
       <button onclick="showStatsModal()" class="tool-btn">&#128200; 學習統計</button>
       <button onclick="showGuessModal()" class="tool-btn">&#127922; 答案分布</button>
       <button onclick="showShortcuts()" class="tool-btn">&#9000;&#65039; 快捷鍵 (?)</button>
@@ -467,13 +488,16 @@
         <input type="file" accept="application/json" onchange="importData(event)" style="display:none">
       </label>
       <button onclick="toggleTheme()" class="tool-btn" id="theme-btn">&#127769; 切換主題</button>
-    </div>
+      </div>
+    </details>
     <!-- Wrong stats -->
-    <div class="panel" id="wrong-stats-panel" style="display:none">
-      <div class="panel-title">&#128293; 錯題複習池</div>
+    <details class="panel" id="wrong-stats-panel" data-pk="wrong" style="display:none">
+      <summary>&#128293; 錯題複習池<span class="badge" id="wrong-count-badge"></span><span class="ca">&#9654;</span></summary>
+      <div class="pbody">
       <div id="wrong-stats-content" style="font-size:12px;color:var(--text2);line-height:1.9"></div>
       <button onclick="clearAllData()" style="margin-top:10px;width:100%;padding:7px;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--text3);font-size:11px;cursor:pointer;font-family:inherit">清除所有記錄</button>
-    </div>
+      </div>
+    </details>
   </aside>
   <main class="main">
     <div id="welcome" class="welcome center">
@@ -960,7 +984,7 @@ function buildTopicsUI(){
 }
 
 // ─── Data loading & boot ─────────────────────────────────────────────
-var DATA_VERSION='16';  // bump when questions.json content changes
+var DATA_VERSION='17';  // bump when questions.json content changes
 var DATA_CACHE_KEY='ins_data_v'+DATA_VERSION;
 function loadData(){
   // Purge old cache versions
@@ -989,6 +1013,7 @@ function bootApp(){
   buildYearChips();
   buildTopicsUI();
   buildSectionChips();
+  initPanelState();
   updateSidePanels();
   updateCountDisplay();
   document.getElementById('welcome-loading').style.display='none';
@@ -1004,6 +1029,20 @@ loadData().then(function(qs){
 });
 
 // ─── Side Panels ─────────────────────────────────────────────────────
+var LS_PANELS='ins_panels_v1';
+function initPanelState(){
+  var st={}; try{ st=JSON.parse(localStorage.getItem(LS_PANELS)||'{}'); }catch(e){}
+  Array.prototype.forEach.call(document.querySelectorAll('details.panel[data-pk]'),function(d){
+    var k=d.dataset.pk;
+    if(st[k]) d.open=true;                      // 預設全收起，只還原使用者展開過的
+    d.addEventListener('toggle',function(){
+      var cur={}; try{ cur=JSON.parse(localStorage.getItem(LS_PANELS)||'{}'); }catch(e){}
+      cur[k]=d.open;
+      try{ localStorage.setItem(LS_PANELS,JSON.stringify(cur)); }catch(e){}
+    });
+  });
+}
+
 function updateSidePanels(){
   updateWrongPanel();
   updateSectionStatsPanel();
@@ -1016,7 +1055,7 @@ function updateReviewBtn(){
   var n=Object.keys(pool).length;
   var btn=document.getElementById('review-btn');
   btn.disabled=n===0;
-  btn.textContent=n>0?('🔥 錯題總複習（'+n+' 題）'):'🔥 錯題總複習';
+  btn.textContent=n>0?('🔥 錯題 '+n):'🔥 錯題複習';
 }
 function updateWrongPanel(){
   var d=getWrongPool();
@@ -1024,6 +1063,8 @@ function updateWrongPanel(){
   var panel=document.getElementById('wrong-stats-panel');
   if(!keys.length){ panel.style.display='none'; return; }
   panel.style.display='block';
+  var badge=document.getElementById('wrong-count-badge');
+  if(badge) badge.textContent=keys.length+' 題';
   var top=keys.slice().sort(function(a,b){return (d[b]?d[b].count:0)-(d[a]?d[a].count:0);}).slice(0,5);
   var html='<div style="margin-bottom:8px">複習池共 <strong style="color:#f87171">'+keys.length+'</strong> 題</div>';
   top.forEach(function(key){
