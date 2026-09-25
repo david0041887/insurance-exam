@@ -3,8 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#0f1117">
+<meta name="description" content="保險經紀人考試考古題線上練習：民國 99–115 年 4,247 題，逐題解析與法條原文，附錯題複習、記憶星星與 ABCD 答案分佈統計。">
+  <meta name="theme-color" content="#0f1117">
 <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
 <title>保險經紀人考古題練習</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap');
@@ -423,7 +425,7 @@
     </div>
     <div class="panel">
       <div class="panel-title">&#128269; 搜尋題目</div>
-      <input type="search" class="search-input" id="search-input" placeholder="輸入關鍵字…" oninput="doSearch()" />
+      <input type="search" class="search-input" id="search-input" placeholder="輸入關鍵字…" aria-label="搜尋題庫關鍵字" oninput="doSearch()" />
       <div class="search-results" id="search-results"></div>
     </div>
     <div class="panel" id="topic-panel" style="display:none">
@@ -485,7 +487,7 @@
       <button onclick="exportData()" class="tool-btn">&#128228; 匯出進度</button>
       <label class="tool-btn" style="cursor:pointer;display:block;text-align:center">
         &#128229; 匯入進度
-        <input type="file" accept="application/json" onchange="importData(event)" style="display:none">
+        <input type="file" accept="application/json" aria-label="匯入進度備份檔" onchange="importData(event)" style="display:none">
       </label>
       <button onclick="toggleTheme()" class="tool-btn" id="theme-btn">&#127769; 切換主題</button>
       </div>
@@ -984,7 +986,7 @@ function buildTopicsUI(){
 }
 
 // ─── Data loading & boot ─────────────────────────────────────────────
-var DATA_VERSION='17';  // bump when questions.json content changes
+var DATA_VERSION='18';  // bump when questions.json content changes
 var DATA_CACHE_KEY='ins_data_v'+DATA_VERSION;
 function loadData(){
   // Purge old cache versions
