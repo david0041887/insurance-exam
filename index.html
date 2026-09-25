@@ -2213,6 +2213,13 @@ if('serviceWorker' in navigator){
           }
         });
       });
+      // 回到分頁時順手檢查新版，最多每 30 分鐘一次
+      var lastCheck = Date.now();
+      document.addEventListener('visibilitychange', function(){
+        if(document.hidden || Date.now()-lastCheck < 1800000) return;
+        lastCheck = Date.now();
+        reg.update().catch(function(){});
+      });
     }).catch(function(){});
     var reloading=false;
     navigator.serviceWorker.addEventListener('controllerchange',function(){
