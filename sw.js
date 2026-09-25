@@ -1,10 +1,10 @@
-const CACHE = 'ins-exam-v30';
+const CACHE = 'ins-exam-v31';
 // 只預快取開站必要的小檔；題庫與解析改為第一次用到時才快取
 const ASSETS = ['./', './index.html', './manifest.json', './icon.svg', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
-  // Don't auto skipWaiting — wait for client to confirm
+  // 不在這裡 skipWaiting：由頁面端 applyUpdate() 發訊息觸發，才能在作答中延後切換
 });
 
 self.addEventListener('activate', e => {

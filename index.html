@@ -1657,6 +1657,7 @@ function drillQuestion(idx,opts){
 function viewQuestion(idx){ drillQuestion(idx,{review:false,viewOnly:true}); }
 
 function restartSession(){
+  if(swReloadIfPending()) return;
   document.getElementById('finished').style.display='none';
   document.getElementById('welcome').style.display='block';
   renderWelcome();
@@ -2182,29 +2183,33 @@ function toggleStudyView(){
   });
 }
 
-// ─── Service worker with update prompt ───────────────────────────────
-function showUpdateToast(reg){
-  if(document.getElementById('sw-update-toast')) return;
-  var t=document.createElement('div');
-  t.id='sw-update-toast';
-  t.className='update-toast';
-  t.innerHTML='&#128226; 有新版本可用 <button id="sw-update-btn" class="update-toast-btn">立即更新</button> <button id="sw-update-dismiss" class="update-toast-x">×</button>';
-  document.body.appendChild(t);
-  document.getElementById('sw-update-btn').onclick=function(){
-    if(reg.waiting) reg.waiting.postMessage('skip-waiting');
-  };
-  document.getElementById('sw-update-dismiss').onclick=function(){ t.remove(); };
+// ─── Service worker：偵測到新版自動套用 ─────────────────────────────
+var swPendingReload=false;
+function swToast(msg){
+  var t=document.getElementById('sw-update-toast');
+  if(!t){ t=document.createElement('div'); t.id='sw-update-toast'; t.className='update-toast'; document.body.appendChild(t); }
+  t.textContent=msg;
+  setTimeout(function(){ if(t.parentNode) t.remove(); },4000);
+}
+// 偵測到新版就直接套用，不再詢問
+function applyUpdate(reg){
+  if(reg.waiting) reg.waiting.postMessage('skip-waiting');
+}
+// 練習中遇到更新：不打斷作答，回首頁時才重載
+function swReloadIfPending(){
+  if(swPendingReload){ swPendingReload=false; window.location.reload(); return true; }
+  return false;
 }
 if('serviceWorker' in navigator){
   window.addEventListener('load',function(){
     navigator.serviceWorker.register('sw.js').then(function(reg){
-      if(reg.waiting && navigator.serviceWorker.controller) showUpdateToast(reg);
+      if(reg.waiting && navigator.serviceWorker.controller) applyUpdate(reg);
       reg.addEventListener('updatefound',function(){
         var nw=reg.installing;
         if(!nw) return;
         nw.addEventListener('statechange',function(){
           if(nw.state==='installed' && navigator.serviceWorker.controller){
-            showUpdateToast(reg);
+            applyUpdate(reg);
           }
         });
       });
@@ -2213,6 +2218,11 @@ if('serviceWorker' in navigator){
     navigator.serviceWorker.addEventListener('controllerchange',function(){
       if(reloading) return;
       reloading=true;
+      if(typeof session!=='undefined' && session.length){
+        swPendingReload=true;                       // 作答中，先不打斷
+        swToast('已更新到新版，練習結束後生效');
+        return;
+      }
       window.location.reload();
     });
   });
