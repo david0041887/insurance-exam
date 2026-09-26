@@ -147,11 +147,19 @@
     }).catch(function () { return false; });
   }
 
-  function pushProgress() {
+  // 每次上傳前也先合併遠端：兩台裝置同時在用時，另一台剛推上去的新進度
+  // 才不會被這台的舊狀態整包蓋掉。force=true 用於「清除」「匯入」這類本來就要覆寫的動作。
+  function pushProgress(force) {
     if (!getToken() || typeof window.collectProgress !== 'function') return Promise.resolve();
-    return api('/api/progress', {
-      method: 'POST',
-      body: JSON.stringify({ progress: JSON.stringify(window.collectProgress()) })
+    var before = force ? Promise.resolve(false) : pullProgress();
+    return before.then(function (changed) {
+      if (changed) {
+        try { if (typeof updateSidePanels === 'function') updateSidePanels(); } catch (e) {}
+      }
+      return api('/api/progress', {
+        method: 'POST',
+        body: JSON.stringify({ progress: JSON.stringify(window.collectProgress()) })
+      });
     }).catch(function () {});
   }
   window.pushProgress = pushProgress;
@@ -219,7 +227,7 @@
           try { if (typeof renderWelcome === 'function') renderWelcome(); } catch (e) {}
         }
         pushStats();
-        pushProgress();
+        pushProgress(true);   // 上面剛合併過，直接上傳
       });
     }).catch(function () {
       renderGate('signin', '無法連線到登入服務，請稍後再試');
