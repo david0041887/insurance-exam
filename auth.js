@@ -152,7 +152,9 @@
     if (typeof window.recordAnswerStat !== 'function') return;
     var orig = window.recordAnswerStat;
     window.recordAnswerStat = function (c) { orig(c); scheduleSync(); };
-    window.addEventListener('beforeunload', function () { try { pushStats(); } catch (e) {} });
+    window.addEventListener('beforeunload', function () {
+      try { pushStats(); pushProgress(); } catch (e) {}
+    });
   }
 
   // ── 啟動 ───────────────────────────────────────────────
@@ -184,7 +186,15 @@
       hideGate();
       renderUserChip();
       hookStats();
-      pushStats();
+      // 順序很重要：先合併遠端進度，合併完才上傳
+      pullProgress().then(function (changed) {
+        if (changed) {
+          try { if (typeof updateSidePanels === 'function') updateSidePanels(); } catch (e) {}
+          try { if (typeof renderWelcome === 'function') renderWelcome(); } catch (e) {}
+        }
+        pushStats();
+        pushProgress();
+      });
     }).catch(function () {
       renderGate('signin', '無法連線到登入服務，請稍後再試');
     });

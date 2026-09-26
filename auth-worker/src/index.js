@@ -82,7 +82,41 @@ function clientKey(req) {
   return req.headers.get('CF-Connecting-IP') || 'unknown';
 }
 
+/** 使用者上傳的 section_stats 只能是「科目名 → 一組有界整數」，
+ *  其餘一律丟掉。後台會把這些值印到頁面上，不淨化就等於開一個 XSS 缺口。 */
+const SEC_FIELDS = ['total', 'seen', 'mastered', 'wrong', 'stars'];
+/** 一律轉成 0..1e7 的整數。用 Number 而不是 parseInt：
+ *  parseInt('1e99') 會得到 1，數字就繞過上限了。 */
+function safeInt(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(1e7, Math.floor(n)));
+}
+function sanitizeSectionStats(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  const out = {};
+  for (const k of Object.keys(raw).slice(0, 20)) {
+    const v = raw[k];
+    if (!v || typeof v !== 'object' || Array.isArray(v)) continue;
+    // 科目名會被印到後台頁面，連可能拼出標籤的字元都不收
+    const name = String(k).replace(/[<>&"'`]/g, '').slice(0, 40).trim();
+    if (!name) continue;
+    const o = {};
+    for (const f of SEC_FIELDS) o[f] = safeInt(v[f]);
+    out[name] = o;
+  }
+  return out;
+}
+
 /** 取出目前使用者；每次都查 D1，所以停用會立即生效 */
+/** 還剩幾位可用的管理員（未被停用）*/
+async function activeAdminCount(env) {
+  const row = await env.DB.prepare(
+    'SELECT COUNT(*) AS n FROM users WHERE is_admin=1 AND COALESCE(is_blocked,0)=0'
+  ).first();
+  return row ? row.n : 0;
+}
+
 async function currentUser(req, env) {
   const auth = req.headers.get('Authorization') || '';
   const m = auth.match(/^Bearer\s+(.+)$/i);
@@ -162,14 +196,8 @@ export default {
         }).then(r => r.json());
 
         if (!tok.id_token) {
-          console.log('TOKEN_EXCHANGE_FAILED', JSON.stringify({
-            google_error: tok.error || null,
-            google_desc: tok.error_description || null,
-            redirect_uri_used: redirect,
-            client_id_tail: (env.GOOGLE_CLIENT_ID || '').slice(-28),
-            secret_len: (env.GOOGLE_CLIENT_SECRET || '').length
-          }));
-          return Response.redirect(site + '#err=token_exchange&g=' + encodeURIComponent(tok.error || 'unknown'), 302);
+          console.log('TOKEN_EXCHANGE_FAILED', tok.error || 'unknown');
+          return Response.redirect(site + '#err=token_exchange', 302);
         }
 
         // id_token 來自 Google 的 TLS 回應，這裡只解 payload
@@ -222,22 +250,59 @@ export default {
           `INSERT INTO user_stats (user_id,total_answered,total_correct,wrong_pool,bookmarks,streak_days,section_stats,updated_at)
            VALUES (?1,?2,?3,?4,?5,?6,?7,datetime('now'))
            ON CONFLICT(user_id) DO UPDATE SET
-             total_answered=excluded.total_answered, total_correct=excluded.total_correct,
+             -- 累計題數只增不減：新裝置剛登入時 localStorage 是空的，
+             -- 直接覆蓋會把既有紀錄歸零
+             total_answered=MAX(user_stats.total_answered, excluded.total_answered),
+             total_correct =MAX(user_stats.total_correct,  excluded.total_correct),
              wrong_pool=excluded.wrong_pool, bookmarks=excluded.bookmarks,
              streak_days=excluded.streak_days, section_stats=excluded.section_stats,
              updated_at=datetime('now')`
         ).bind(r.user.id, n(b.total_answered), n(b.total_correct), n(b.wrong_pool),
                n(b.bookmarks), n(b.streak_days),
-               JSON.stringify(b.section_stats || {}).slice(0, 20000)).run();
+               JSON.stringify(sanitizeSectionStats(b.section_stats)).slice(0, 20000)).run();
 
         if (b.day && /^\d{4}-\d{2}-\d{2}$/.test(b.day)) {
           await env.DB.prepare(
             `INSERT INTO daily_activity (user_id,day,answered,correct) VALUES (?1,?2,?3,?4)
              ON CONFLICT(user_id,day) DO UPDATE SET
-               answered=excluded.answered, correct=excluded.correct`
+               answered=MAX(daily_activity.answered, excluded.answered),
+               correct =MAX(daily_activity.correct,  excluded.correct)`
           ).bind(r.user.id, b.day, n(b.day_answered), n(b.day_correct)).run();
         }
         return json(req, env, { ok: true });
+      }
+
+      // ---- 4b. 進度同步（錯題池／星星／收藏／筆記整包存取）----
+      if (path === '/api/progress') {
+        const r = await currentUser(req, env);
+        if (r.error) return json(req, env, { error: r.error, note: r.note || null }, r.status);
+
+        if (req.method === 'GET') {
+          const row = await env.DB.prepare(
+            'SELECT data, updated_at FROM user_progress WHERE user_id=?'
+          ).bind(r.user.id).first();
+          return json(req, env, {
+            progress: row ? row.data : null,
+            updated_at: row ? row.updated_at : null,
+          });
+        }
+
+        if (req.method === 'POST') {
+          if (await rateLimited(env.RL_STATS, r.user.id)) {
+            return json(req, env, { error: 'rate_limited' }, 429);
+          }
+          const b = await req.json().catch(() => ({}));
+          // 只接受字串化後的整包進度，並限制大小（D1 單列上限 1MB）
+          const data = typeof b.progress === 'string' ? b.progress : JSON.stringify(b.progress || {});
+          if (data.length > 600000) return json(req, env, { error: 'too_large' }, 413);
+          try { JSON.parse(data); } catch { return json(req, env, { error: 'bad_json' }, 400); }
+          await env.DB.prepare(
+            `INSERT INTO user_progress (user_id,data,updated_at) VALUES (?1,?2,datetime('now'))
+             ON CONFLICT(user_id) DO UPDATE SET data=excluded.data, updated_at=datetime('now')`
+          ).bind(r.user.id, data).run();
+          return json(req, env, { ok: true });
+        }
+        return json(req, env, { error: 'method_not_allowed' }, 405);
       }
 
       // ---- 5. 後台：帳號清單 ----
@@ -267,6 +332,12 @@ export default {
         const b = await req.json().catch(() => ({}));
         if (!b.id) return json(req, env, { error: 'no_id' }, 400);
         if (b.id === r.user.id) return json(req, env, { error: 'cannot_block_self' }, 400);
+        if (b.blocked) {
+          const t = await env.DB.prepare('SELECT is_admin FROM users WHERE id=?').bind(b.id).first();
+          if (t && t.is_admin && await activeAdminCount(env) <= 1) {
+            return json(req, env, { error: 'last_admin' }, 400);
+          }
+        }
         await env.DB.prepare('UPDATE users SET is_blocked=?1, blocked_note=?2 WHERE id=?3')
           .bind(b.blocked ? 1 : 0, b.blocked ? (b.note || null) : null, b.id).run();
         return json(req, env, { ok: true });
@@ -330,6 +401,9 @@ export default {
         const b = await req.json().catch(() => ({}));
         if (!b.id) return json(req, env, { error: 'no_id' }, 400);
         if (b.id === r.user.id) return json(req, env, { error: 'cannot_change_self' }, 400);
+        if (!b.admin && await activeAdminCount(env) <= 1) {
+          return json(req, env, { error: 'last_admin' }, 400);
+        }
         await env.DB.prepare('UPDATE users SET is_admin=?1 WHERE id=?2')
           .bind(b.admin ? 1 : 0, b.id).run();
         return json(req, env, { ok: true });
@@ -339,7 +413,8 @@ export default {
       return json(req, env, { error: 'not_found' }, 404);
 
     } catch (e) {
-      return json(req, env, { error: 'server_error', detail: String(e && e.message || e) }, 500);
+      console.log('SERVER_ERROR', path, String(e && e.stack || e));
+      return json(req, env, { error: 'server_error' }, 500);
     }
   },
 };

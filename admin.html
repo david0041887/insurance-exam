@@ -193,9 +193,11 @@ function subName(r){
   return parts.join(' · ');
 }
 function secStats(r){ try{ return r.section_stats? JSON.parse(r.section_stats):{}; }catch(e){ return {}; } }
+// section_stats 由使用者端上傳，後端雖已淨化，這裡仍一律當成數字處理，避免任何字串進到 innerHTML
+function num(v){ var n=parseInt(v,10); return (isNaN(n)||n<0)? 0 : Math.min(n,1e7); }
 function coverage(r){
   var ss=secStats(r), seen=0, tot=0;
-  SEC_ORDER.forEach(function(k){ var v=ss[k]||{}; seen+=v.seen||0; tot+=v.total||SEC_TOTAL[k]||0; });
+  SEC_ORDER.forEach(function(k){ var v=ss[k]||{}; seen+=num(v.seen); tot+=num(v.total)||SEC_TOTAL[k]||0; });
   return tot? seen/tot*100 : 0;
 }
 function pctTxt(v){ return (v<10&&v>0)? v.toFixed(1) : String(Math.round(v)); }
@@ -335,9 +337,13 @@ function renderDetail(d){
   // 各科
   var ss=secStats(u);
   var rows=SEC_ORDER.map(function(k){
-    var v=ss[k]||{}, tot=v.total||SEC_TOTAL[k]||0, seen=v.seen||0;
-    var avg=seen? (v.stars||0)/seen : 0;
-    return {k:k,tot:tot,seen:seen,mastered:v.mastered,wrong:v.wrong,avg:avg,cov:tot?seen/tot*100:0,hasNew:v.total!=null};
+    var v=ss[k]||{};
+    var tot=num(v.total)||SEC_TOTAL[k]||0, seen=num(v.seen);
+    var avg=seen? num(v.stars)/seen : 0;
+    return {k:k,tot:tot,seen:seen,
+            mastered:(v.mastered!=null?num(v.mastered):null),
+            wrong:(v.wrong!=null?num(v.wrong):null),
+            avg:avg,cov:tot?seen/tot*100:0,hasNew:v.total!=null};
   });
   var practiced=rows.filter(function(x){return x.seen>=20;});
   var weakest=practiced.length? practiced.slice().sort(function(a,b){return a.avg-b.avg;})[0] : null;
@@ -401,6 +407,13 @@ function editNickname(id, onDone){
     });
 }
 
+var ERR_MSG={last_admin:'這是最後一位可用的管理員，不能停用或取消其管理員身分。',
+             cannot_block_self:'不能停用自己。', cannot_change_self:'不能變更自己的管理員身分。',
+             not_admin:'沒有管理員權限。'};
+function errText(res){
+  var e=res&&res.data&&res.data.error;
+  return ERR_MSG[e]||('操作失敗：'+(e||res.status));
+}
 function toggleBlock(id,blocked){
   var row=DATA.filter(function(r){return r.id===id;})[0];
   var who=(row&&(row.name||row.email))||id;
@@ -411,7 +424,7 @@ function toggleBlock(id,blocked){
   } else if(!confirm('\u89e3\u9664\u505c\u7528\u300c'+who+'\u300d\uff1f')) return;
   api('/api/admin/block',{method:'POST',body:JSON.stringify({id:id,blocked:!blocked,note:note||null})})
     .then(function(r){
-      if(r.status!==200){ alert('\u64cd\u4f5c\u5931\u6557\uff1a'+((r.data&&r.data.error)||r.status)); return; }
+      if(r.status!==200){ alert(errText(r)); return; }
       load();
     });
 }
