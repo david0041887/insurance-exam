@@ -1091,7 +1091,7 @@ function buildTopicsUI(){
 }
 
 // ─── Data loading & boot ─────────────────────────────────────────────
-var DATA_VERSION='21';  // bump when questions.json content changes
+var DATA_VERSION='22';  // 改版時一起調：sw.js 的 CACHE、admin.html 的 config.js?v=
 var DATA_CACHE_KEY='ins_data_v'+DATA_VERSION;
 function loadData(){
   // Purge old cache versions
@@ -2365,8 +2365,16 @@ if('serviceWorker' in navigator){
     });
   });
 }
+
+// 帶上版本參數載入登入相關腳本：靜態 <script src> 沒有版本，
+// 瀏覽器會拿 HTTP 快取裡的舊檔，改版後容易出現新前端配舊 auth.js。
+// async=false 可保留 config.js → auth.js 的執行順序。
+['config.js','auth.js'].forEach(function(src){
+  var sc=document.createElement('script');
+  sc.src=src+'?v='+DATA_VERSION;
+  sc.async=false;
+  document.body.appendChild(sc);
+});
 </script>
-<script src="config.js"></script>
-<script src="auth.js"></script>
 </body>
 </html>
