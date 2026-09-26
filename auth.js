@@ -133,6 +133,29 @@
     };
   }
 
+  // ── 進度同步 ───────────────────────────────────────────
+  // 先拉回遠端進度合併到本機，再把合併結果推回去。
+  // 不先合併就上傳，新裝置的空白 localStorage 會覆蓋掉既有紀錄。
+  function pullProgress() {
+    if (!getToken()) return Promise.resolve(false);
+    return api('/api/progress').then(function (r) {
+      if (r.status !== 200 || !r.data || !r.data.progress) return false;
+      var remote;
+      try { remote = JSON.parse(r.data.progress); } catch (e) { return false; }
+      if (typeof window.mergeProgress !== 'function') return false;
+      return !!window.mergeProgress(remote);
+    }).catch(function () { return false; });
+  }
+
+  function pushProgress() {
+    if (!getToken() || typeof window.collectProgress !== 'function') return Promise.resolve();
+    return api('/api/progress', {
+      method: 'POST',
+      body: JSON.stringify({ progress: JSON.stringify(window.collectProgress()) })
+    }).catch(function () {});
+  }
+  window.pushProgress = pushProgress;
+
   function pushStats() {
     if (!getToken()) return Promise.resolve();
     return api('/api/stats', { method: 'POST', body: JSON.stringify(collectStats()) })
@@ -146,7 +169,10 @@
   window.pushStats = pushStats;
 
   var timer = null;
-  function scheduleSync() { clearTimeout(timer); timer = setTimeout(pushStats, 4000); }
+  function scheduleSync() {
+    clearTimeout(timer);
+    timer = setTimeout(function () { pushStats(); pushProgress(); }, 4000);
+  }
 
   function hookStats() {
     if (typeof window.recordAnswerStat !== 'function') return;
